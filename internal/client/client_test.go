@@ -1,8 +1,8 @@
 package client
 
 import (
-	"errors"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -52,7 +52,7 @@ func TestDoRequest_AuthenticatedGET(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if gotMethod != "GET" {
 		t.Errorf("method = %q, want %q", gotMethod, "GET")
@@ -87,7 +87,7 @@ func TestDoRequest_POSTWithBody(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if gotContentType != "application/json" {
 		t.Errorf("Content-Type = %q, want %q", gotContentType, "application/json")
@@ -139,7 +139,7 @@ func TestDoUnauthenticatedRequest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if gotMethod != "GET" {
 		t.Errorf("method = %q, want %q", gotMethod, "GET")
@@ -341,7 +341,7 @@ func TestDoRequest_RetryOn500ThenSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if attempts != 2 {
 		t.Errorf("attempts = %d, want 2", attempts)
 	}
@@ -367,7 +367,7 @@ func TestDoRequest_RetryOnNetworkErrorThenSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if transport.failFirst != 0 {
 		t.Errorf("failFirst remaining = %d, want 0", transport.failFirst)
 	}
@@ -409,15 +409,6 @@ func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req)
 }
 
-type fakeNetError struct {
-	timeout   bool
-	temporary bool
-}
-
-func (e *fakeNetError) Error() string   { return "fake net error" }
-func (e *fakeNetError) Timeout() bool     { return e.timeout }
-func (e *fakeNetError) Temporary() bool   { return e.temporary }
-
 func TestDoRequest_RetryOn500(t *testing.T) {
 	attempts := 0
 	handler := func(w http.ResponseWriter, r *http.Request) {
@@ -434,7 +425,7 @@ func TestDoRequest_RetryOn500(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if attempts != 3 {
 		t.Errorf("attempts = %d, want 3", attempts)
 	}
@@ -455,7 +446,7 @@ func TestDoRequest_RetryExhausted(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if attempts != 4 {
 		t.Errorf("attempts = %d, want 4", attempts)
 	}
@@ -483,7 +474,7 @@ func TestDoRequest_RetryOnNetworkError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if callCount != 2 {
 		t.Errorf("callCount = %d, want 2", callCount)
 	}
@@ -509,4 +500,3 @@ func TestDoRequest_NetworkErrorExhausted(t *testing.T) {
 		t.Errorf("error = %q, want to contain 'request failed'", err.Error())
 	}
 }
-

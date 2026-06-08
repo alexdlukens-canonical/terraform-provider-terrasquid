@@ -75,7 +75,7 @@ func newMockServer(t *testing.T) (*httptest.Server, *mockStore) {
 		}
 
 		if path == "/status/" && r.Method == http.MethodGet {
-			json.NewEncoder(w).Encode(model.Status{
+			_ = json.NewEncoder(w).Encode(model.Status{
 				DBConfigVersion:      1,
 				AppliedConfigVersion: 1,
 				LastReload:           "2024-01-01T00:00:00Z",
@@ -89,7 +89,7 @@ func newMockServer(t *testing.T) (*httptest.Server, *mockStore) {
 			auth := r.Header.Get("Authorization")
 			if auth != "Api-Key valid-key" {
 				w.WriteHeader(http.StatusUnauthorized)
-				json.NewEncoder(w).Encode(map[string]interface{}{
+				_ = json.NewEncoder(w).Encode(map[string]interface{}{
 					"error":   "Unauthorized",
 					"message": "Invalid API key",
 				})
@@ -112,7 +112,7 @@ func newMockServer(t *testing.T) (*httptest.Server, *mockStore) {
 			handleACLRules(store, w, r)
 		default:
 			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"error":   "NotFound",
 				"message": "Resource not found",
 			})
@@ -150,14 +150,14 @@ func handleSourceACLs(s *mockStore, w http.ResponseWriter, r *http.Request) {
 			CIDR:         input.CIDR,
 		}
 		s.sourceACLs[id] = item
-		json.NewEncoder(w).Encode(item)
+		_ = json.NewEncoder(w).Encode(item)
 
 	case path == "/sources/" && r.Method == http.MethodGet:
 		var items []model.SourceACL
 		for _, v := range s.sourceACLs {
 			items = append(items, v)
 		}
-		json.NewEncoder(w).Encode(items)
+		_ = json.NewEncoder(w).Encode(items)
 
 	default:
 		id := extractID(path, "/sources/")
@@ -168,7 +168,7 @@ func handleSourceACLs(s *mockStore, w http.ResponseWriter, r *http.Request) {
 		item, ok := s.sourceACLs[id]
 		if !ok {
 			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"error":   "NotFound",
 				"message": "Source ACL not found",
 			})
@@ -177,7 +177,7 @@ func handleSourceACLs(s *mockStore, w http.ResponseWriter, r *http.Request) {
 
 		switch r.Method {
 		case http.MethodGet:
-			json.NewEncoder(w).Encode(item)
+			_ = json.NewEncoder(w).Encode(item)
 		case http.MethodPut:
 			var input model.SourceACLInput
 			if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -188,7 +188,7 @@ func handleSourceACLs(s *mockStore, w http.ResponseWriter, r *http.Request) {
 			item.CIDR = input.CIDR
 			item.UpdatedAt = time.Now()
 			s.sourceACLs[id] = item
-			json.NewEncoder(w).Encode(item)
+			_ = json.NewEncoder(w).Encode(item)
 		case http.MethodDelete:
 			delete(s.sourceACLs, id)
 			w.WriteHeader(http.StatusNoContent)
@@ -216,19 +216,19 @@ func handleSourceGroups(s *mockStore, w http.ResponseWriter, r *http.Request) {
 			Sources:      input.Sources,
 		}
 		s.sourceGroups[id] = item
-		json.NewEncoder(w).Encode(item)
+		_ = json.NewEncoder(w).Encode(item)
 
 	case path == "/source-groups/" && r.Method == http.MethodGet:
 		name := r.URL.Query().Get("name")
 		if name != "" {
 			for _, v := range s.sourceGroups {
 				if v.Name == name {
-					json.NewEncoder(w).Encode([]model.SourceGroup{v})
+					_ = json.NewEncoder(w).Encode([]model.SourceGroup{v})
 					return
 				}
 			}
 			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"error":   "NotFound",
 				"message": "Source group not found",
 			})
@@ -238,7 +238,7 @@ func handleSourceGroups(s *mockStore, w http.ResponseWriter, r *http.Request) {
 		for _, v := range s.sourceGroups {
 			items = append(items, v)
 		}
-		json.NewEncoder(w).Encode(items)
+		_ = json.NewEncoder(w).Encode(items)
 
 	default:
 		id := extractID(path, "/source-groups/")
@@ -249,7 +249,7 @@ func handleSourceGroups(s *mockStore, w http.ResponseWriter, r *http.Request) {
 		item, ok := s.sourceGroups[id]
 		if !ok {
 			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"error":   "NotFound",
 				"message": "Source group not found",
 			})
@@ -258,7 +258,7 @@ func handleSourceGroups(s *mockStore, w http.ResponseWriter, r *http.Request) {
 
 		switch r.Method {
 		case http.MethodGet:
-			json.NewEncoder(w).Encode(item)
+			_ = json.NewEncoder(w).Encode(item)
 		case http.MethodPut:
 			var input model.SourceGroupInput
 			if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -269,7 +269,7 @@ func handleSourceGroups(s *mockStore, w http.ResponseWriter, r *http.Request) {
 			item.Sources = input.Sources
 			item.UpdatedAt = time.Now()
 			s.sourceGroups[id] = item
-			json.NewEncoder(w).Encode(item)
+			_ = json.NewEncoder(w).Encode(item)
 		case http.MethodDelete:
 			delete(s.sourceGroups, id)
 			w.WriteHeader(http.StatusNoContent)
@@ -297,14 +297,14 @@ func handlePortGroups(s *mockStore, w http.ResponseWriter, r *http.Request) {
 			Ports:        input.Ports,
 		}
 		s.portGroups[id] = item
-		json.NewEncoder(w).Encode(item)
+		_ = json.NewEncoder(w).Encode(item)
 
 	case path == "/port-groups/" && r.Method == http.MethodGet:
 		var items []model.PortGroup
 		for _, v := range s.portGroups {
 			items = append(items, v)
 		}
-		json.NewEncoder(w).Encode(items)
+		_ = json.NewEncoder(w).Encode(items)
 
 	default:
 		id := extractID(path, "/port-groups/")
@@ -315,7 +315,7 @@ func handlePortGroups(s *mockStore, w http.ResponseWriter, r *http.Request) {
 		item, ok := s.portGroups[id]
 		if !ok {
 			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"error":   "NotFound",
 				"message": "Port group not found",
 			})
@@ -324,7 +324,7 @@ func handlePortGroups(s *mockStore, w http.ResponseWriter, r *http.Request) {
 
 		switch r.Method {
 		case http.MethodGet:
-			json.NewEncoder(w).Encode(item)
+			_ = json.NewEncoder(w).Encode(item)
 		case http.MethodPut:
 			var input model.PortGroupInput
 			if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -335,7 +335,7 @@ func handlePortGroups(s *mockStore, w http.ResponseWriter, r *http.Request) {
 			item.Ports = input.Ports
 			item.UpdatedAt = time.Now()
 			s.portGroups[id] = item
-			json.NewEncoder(w).Encode(item)
+			_ = json.NewEncoder(w).Encode(item)
 		case http.MethodDelete:
 			delete(s.portGroups, id)
 			w.WriteHeader(http.StatusNoContent)
@@ -366,14 +366,14 @@ func handleDestConfigs(s *mockStore, w http.ResponseWriter, r *http.Request) {
 			PortGroups:   input.PortGroups,
 		}
 		s.destConfigs[id] = item
-		json.NewEncoder(w).Encode(item)
+		_ = json.NewEncoder(w).Encode(item)
 
 	case path == "/destinations/" && r.Method == http.MethodGet:
 		var items []model.DestinationConfig
 		for _, v := range s.destConfigs {
 			items = append(items, v)
 		}
-		json.NewEncoder(w).Encode(items)
+		_ = json.NewEncoder(w).Encode(items)
 
 	default:
 		id := extractID(path, "/destinations/")
@@ -384,7 +384,7 @@ func handleDestConfigs(s *mockStore, w http.ResponseWriter, r *http.Request) {
 		item, ok := s.destConfigs[id]
 		if !ok {
 			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"error":   "NotFound",
 				"message": "Destination config not found",
 			})
@@ -393,7 +393,7 @@ func handleDestConfigs(s *mockStore, w http.ResponseWriter, r *http.Request) {
 
 		switch r.Method {
 		case http.MethodGet:
-			json.NewEncoder(w).Encode(item)
+			_ = json.NewEncoder(w).Encode(item)
 		case http.MethodPut:
 			var input model.DestinationConfigInput
 			if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -407,7 +407,7 @@ func handleDestConfigs(s *mockStore, w http.ResponseWriter, r *http.Request) {
 			item.PortGroups = input.PortGroups
 			item.UpdatedAt = time.Now()
 			s.destConfigs[id] = item
-			json.NewEncoder(w).Encode(item)
+			_ = json.NewEncoder(w).Encode(item)
 		case http.MethodDelete:
 			delete(s.destConfigs, id)
 			w.WriteHeader(http.StatusNoContent)
@@ -435,19 +435,19 @@ func handleDestGroups(s *mockStore, w http.ResponseWriter, r *http.Request) {
 			Destinations: input.Destinations,
 		}
 		s.destGroups[id] = item
-		json.NewEncoder(w).Encode(item)
+		_ = json.NewEncoder(w).Encode(item)
 
 	case path == "/destination-groups/" && r.Method == http.MethodGet:
 		name := r.URL.Query().Get("name")
 		if name != "" {
 			for _, v := range s.destGroups {
 				if v.Name == name {
-					json.NewEncoder(w).Encode([]model.DestinationGroup{v})
+					_ = json.NewEncoder(w).Encode([]model.DestinationGroup{v})
 					return
 				}
 			}
 			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"error":   "NotFound",
 				"message": "Destination group not found",
 			})
@@ -457,7 +457,7 @@ func handleDestGroups(s *mockStore, w http.ResponseWriter, r *http.Request) {
 		for _, v := range s.destGroups {
 			items = append(items, v)
 		}
-		json.NewEncoder(w).Encode(items)
+		_ = json.NewEncoder(w).Encode(items)
 
 	default:
 		id := extractID(path, "/destination-groups/")
@@ -468,7 +468,7 @@ func handleDestGroups(s *mockStore, w http.ResponseWriter, r *http.Request) {
 		item, ok := s.destGroups[id]
 		if !ok {
 			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"error":   "NotFound",
 				"message": "Destination group not found",
 			})
@@ -477,7 +477,7 @@ func handleDestGroups(s *mockStore, w http.ResponseWriter, r *http.Request) {
 
 		switch r.Method {
 		case http.MethodGet:
-			json.NewEncoder(w).Encode(item)
+			_ = json.NewEncoder(w).Encode(item)
 		case http.MethodPut:
 			var input model.DestinationGroupInput
 			if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -488,7 +488,7 @@ func handleDestGroups(s *mockStore, w http.ResponseWriter, r *http.Request) {
 			item.Destinations = input.Destinations
 			item.UpdatedAt = time.Now()
 			s.destGroups[id] = item
-			json.NewEncoder(w).Encode(item)
+			_ = json.NewEncoder(w).Encode(item)
 		case http.MethodDelete:
 			delete(s.destGroups, id)
 			w.WriteHeader(http.StatusNoContent)
@@ -520,14 +520,14 @@ func handleACLRules(s *mockStore, w http.ResponseWriter, r *http.Request) {
 			DstGroup:     input.DstGroup,
 		}
 		s.aclRules[id] = item
-		json.NewEncoder(w).Encode(item)
+		_ = json.NewEncoder(w).Encode(item)
 
 	case path == "/acl-rules/" && r.Method == http.MethodGet:
 		var items []model.ACLRule
 		for _, v := range s.aclRules {
 			items = append(items, v)
 		}
-		json.NewEncoder(w).Encode(items)
+		_ = json.NewEncoder(w).Encode(items)
 
 	default:
 		id := extractID(path, "/acl-rules/")
@@ -538,7 +538,7 @@ func handleACLRules(s *mockStore, w http.ResponseWriter, r *http.Request) {
 		item, ok := s.aclRules[id]
 		if !ok {
 			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"error":   "NotFound",
 				"message": "ACL rule not found",
 			})
@@ -547,7 +547,7 @@ func handleACLRules(s *mockStore, w http.ResponseWriter, r *http.Request) {
 
 		switch r.Method {
 		case http.MethodGet:
-			json.NewEncoder(w).Encode(item)
+			_ = json.NewEncoder(w).Encode(item)
 		case http.MethodPut:
 			var input model.ACLRuleInput
 			if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -561,7 +561,7 @@ func handleACLRules(s *mockStore, w http.ResponseWriter, r *http.Request) {
 			item.DstGroup = input.DstGroup
 			item.UpdatedAt = time.Now()
 			s.aclRules[id] = item
-			json.NewEncoder(w).Encode(item)
+			_ = json.NewEncoder(w).Encode(item)
 		case http.MethodDelete:
 			delete(s.aclRules, id)
 			w.WriteHeader(http.StatusNoContent)

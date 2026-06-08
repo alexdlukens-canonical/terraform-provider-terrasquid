@@ -19,9 +19,9 @@ type StatusDataSource struct {
 type StatusDataSourceModel struct {
 	DBConfigVersion      types.Int64  `tfsdk:"db_config_version"`
 	AppliedConfigVersion types.Int64  `tfsdk:"applied_config_version"`
-	LastReload          types.String `tfsdk:"last_reload"`
-	LastReloadOK        types.Bool   `tfsdk:"last_reload_ok"`
-	Unit                types.String `tfsdk:"unit"`
+	LastReload           types.String `tfsdk:"last_reload"`
+	LastReloadOK         types.Bool   `tfsdk:"last_reload_ok"`
+	Unit                 types.String `tfsdk:"unit"`
 }
 
 func NewStatusDataSource() datasource.DataSource {
@@ -75,9 +75,9 @@ func (d *StatusDataSource) Read(ctx context.Context, _ datasource.ReadRequest, r
 	state := StatusDataSourceModel{
 		DBConfigVersion:      types.Int64Value(int64(status.DBConfigVersion)),
 		AppliedConfigVersion: types.Int64Value(int64(status.AppliedConfigVersion)),
-		LastReload:          types.StringValue(status.LastReload),
-		LastReloadOK:        types.BoolValue(status.LastReloadOK),
-		Unit:                types.StringValue(status.Unit),
+		LastReload:           types.StringValue(status.LastReload),
+		LastReloadOK:         types.BoolValue(status.LastReloadOK),
+		Unit:                 types.StringValue(status.Unit),
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)

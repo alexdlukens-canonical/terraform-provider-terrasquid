@@ -38,7 +38,7 @@ func isRetryableError(err error) bool {
 	}
 	var urlErr *url.Error
 	if errors.As(err, &urlErr) {
-		return urlErr.Timeout()
+		return urlErr.Timeout() || urlErr.Temporary()
 	}
 	return false
 }
@@ -96,7 +96,7 @@ func (c *APIClient) doRequest(method, path string, body interface{}) (*http.Resp
 			return resp, nil
 		}
 
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		lastErr = &APIError{StatusCode: resp.StatusCode, Message: fmt.Sprintf("HTTP %d", resp.StatusCode)}
 		time.Sleep(backoff)
 		backoff *= 2
@@ -117,7 +117,7 @@ func (c *APIClient) doUnauthenticatedRequest(method, path string) (*http.Respons
 }
 
 func parseResponse(resp *http.Response, target interface{}) error {
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		if target != nil {

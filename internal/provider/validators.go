@@ -19,8 +19,8 @@ func (v xorFieldValidator) Description(_ context.Context) string {
 	return fmt.Sprintf("Exactly one of %s or %s must be specified", v.fieldA, v.fieldB)
 }
 
-func (v xorFieldValidator) MarkdownDescription(_ context.Context) string {
-	return v.Description(nil)
+func (v xorFieldValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
 }
 
 func (v xorFieldValidator) ValidateResource(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {

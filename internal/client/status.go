@@ -19,7 +19,7 @@ func (c *APIClient) GetStatus(ctx context.Context) (*model.Status, error) {
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		return nil, parseResponse(resp, nil)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

@@ -68,18 +68,18 @@ func (r *ACLRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Computed: true,
 				Default:  int64default.StaticInt64(100),
 			},
-		"src": schema.StringAttribute{
-			Optional: true,
-		},
-		"src_group": schema.StringAttribute{
-			Optional: true,
-		},
-		"dst": schema.StringAttribute{
-			Optional: true,
-		},
-		"dst_group": schema.StringAttribute{
-			Optional: true,
-		},
+			"src": schema.StringAttribute{
+				Optional: true,
+			},
+			"src_group": schema.StringAttribute{
+				Optional: true,
+			},
+			"dst": schema.StringAttribute{
+				Optional: true,
+			},
+			"dst_group": schema.StringAttribute{
+				Optional: true,
+			},
 			"service": schema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
