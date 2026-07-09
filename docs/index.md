@@ -21,14 +21,9 @@ provider "terrasquid" {
 ## Resources
 
 - `terrasquid_source_acl`
-- `terrasquid_source_group`
 - `terrasquid_destination_config`
-- `terrasquid_destination_group`
-- `terrasquid_port_group`
 - `terrasquid_acl_rule`
 
 ## Data Sources
 
 - `terrasquid_status`
-- `terrasquid_source_group`
-- `terrasquid_destination_group`

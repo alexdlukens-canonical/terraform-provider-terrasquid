@@ -10,10 +10,6 @@ import (
 	"github.com/terrasquid/terraform-provider-terrasquid/internal/model"
 )
 
-func strPtr(s string) *string {
-	return &s
-}
-
 func TestListACLRules(t *testing.T) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
@@ -32,10 +28,8 @@ func TestListACLRules(t *testing.T) {
 				"created_at": "2024-01-01T00:00:00Z",
 				"updated_at": "2024-01-01T00:00:00Z",
 				"priority": 10,
-				"src": "10.0.0.0/8",
-				"src_group": null,
-				"dst": null,
-				"dst_group": "dg-1"
+				"sources": ["src-1"],
+				"destinations": ["dst-1", "dst-2"]
 			}
 		]`))
 	}
@@ -54,17 +48,11 @@ func TestListACLRules(t *testing.T) {
 	if rule.Priority != 10 {
 		t.Errorf("Priority = %d, want %d", rule.Priority, 10)
 	}
-	if rule.Src == nil || *rule.Src != "10.0.0.0/8" {
-		t.Errorf("Src = %v, want 10.0.0.0/8", rule.Src)
+	if len(rule.Sources) != 1 || rule.Sources[0] != "src-1" {
+		t.Errorf("Sources = %v, want [src-1]", rule.Sources)
 	}
-	if rule.SrcGroup != nil {
-		t.Errorf("SrcGroup = %v, want nil", rule.SrcGroup)
-	}
-	if rule.Dst != nil {
-		t.Errorf("Dst = %v, want nil", rule.Dst)
-	}
-	if rule.DstGroup == nil || *rule.DstGroup != "dg-1" {
-		t.Errorf("DstGroup = %v, want dg-1", rule.DstGroup)
+	if len(rule.Destinations) != 2 || rule.Destinations[0] != "dst-1" {
+		t.Errorf("Destinations = %v, want [dst-1 dst-2]", rule.Destinations)
 	}
 }
 
@@ -91,17 +79,15 @@ func TestCreateACLRule(t *testing.T) {
 			"created_at": "2024-01-01T00:00:00Z",
 			"updated_at": "2024-01-01T00:00:00Z",
 			"priority": 20,
-			"src": null,
-			"src_group": "sg-1",
-			"dst": "192.168.1.1",
-			"dst_group": null
+			"sources": ["sg-1"],
+			"destinations": ["192.168.1.1"]
 		}`))
 	}
 	client, _ := newTestClient(t, handler)
 	input := model.ACLRuleInput{
-		Priority: 20,
-		SrcGroup: strPtr("sg-1"),
-		Dst:      strPtr("192.168.1.1"),
+		Priority:     20,
+		Sources:      []string{"sg-1"},
+		Destinations: []string{"192.168.1.1"},
 	}
 	rule, err := client.CreateACLRule(context.Background(), input)
 	if err != nil {
@@ -114,8 +100,8 @@ func TestCreateACLRule(t *testing.T) {
 	if parsed.Priority != 20 {
 		t.Errorf("body priority = %d, want %d", parsed.Priority, 20)
 	}
-	if parsed.SrcGroup == nil || *parsed.SrcGroup != "sg-1" {
-		t.Errorf("body SrcGroup = %v, want sg-1", parsed.SrcGroup)
+	if len(parsed.Sources) != 1 || parsed.Sources[0] != "sg-1" {
+		t.Errorf("body Sources = %v, want [sg-1]", parsed.Sources)
 	}
 	if rule.ID != "rule-new" {
 		t.Errorf("ID = %q, want %q", rule.ID, "rule-new")
@@ -139,10 +125,8 @@ func TestGetACLRule(t *testing.T) {
 			"created_at": "2024-01-01T00:00:00Z",
 			"updated_at": "2024-01-01T00:00:00Z",
 			"priority": 10,
-			"src": "10.0.0.0/8",
-			"src_group": null,
-			"dst": null,
-			"dst_group": "dg-1"
+			"sources": ["src-1"],
+			"destinations": ["dst-1"]
 		}`))
 	}
 	client, _ := newTestClient(t, handler)
@@ -178,10 +162,8 @@ func TestUpdateACLRule(t *testing.T) {
 			"created_at": "2024-01-01T00:00:00Z",
 			"updated_at": "2024-01-02T00:00:00Z",
 			"priority": 30,
-			"src": null,
-			"src_group": null,
-			"dst": null,
-			"dst_group": null
+			"sources": [],
+			"destinations": []
 		}`))
 	}
 	client, _ := newTestClient(t, handler)

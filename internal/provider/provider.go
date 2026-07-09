@@ -90,10 +90,7 @@ func (p *TerrasquidProvider) Configure(ctx context.Context, req provider.Configu
 func (p *TerrasquidProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewSourceACLResource,
-		NewSourceGroupResource,
 		NewDestinationConfigResource,
-		NewDestinationGroupResource,
-		NewPortGroupResource,
 		NewACLRuleResource,
 	}
 }
@@ -101,8 +98,6 @@ func (p *TerrasquidProvider) Resources(_ context.Context) []func() resource.Reso
 func (p *TerrasquidProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewStatusDataSource,
-		NewSourceGroupDataSource,
-		NewDestinationGroupDataSource,
 	}
 }
 

@@ -27,7 +27,6 @@ type SourceACLResourceModel struct {
 	Name      types.String `tfsdk:"name"`
 	CIDR      types.List   `tfsdk:"cidr"`
 	Service   types.String `tfsdk:"service"`
-	KeyPrefix types.String `tfsdk:"key_prefix"`
 	CreatedAt types.String `tfsdk:"created_at"`
 	UpdatedAt types.String `tfsdk:"updated_at"`
 }
@@ -58,9 +57,6 @@ func (r *SourceACLResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 				Required:    true,
 			},
 			"service": schema.StringAttribute{
-				Computed: true,
-			},
-			"key_prefix": schema.StringAttribute{
 				Computed: true,
 			},
 			"created_at": schema.StringAttribute{
@@ -109,7 +105,6 @@ func (r *SourceACLResource) Create(ctx context.Context, req resource.CreateReque
 	plan.ID = types.StringValue(result.ID)
 	plan.Name = types.StringValue(result.Name)
 	plan.Service = types.StringValue(result.Service)
-	plan.KeyPrefix = types.StringValue(result.KeyPrefix)
 	plan.CreatedAt = types.StringValue(result.CreatedAt.Format(time.RFC3339))
 	plan.UpdatedAt = types.StringValue(result.UpdatedAt.Format(time.RFC3339))
 
@@ -140,7 +135,6 @@ func (r *SourceACLResource) Read(ctx context.Context, req resource.ReadRequest, 
 	state.ID = types.StringValue(result.ID)
 	state.Name = types.StringValue(result.Name)
 	state.Service = types.StringValue(result.Service)
-	state.KeyPrefix = types.StringValue(result.KeyPrefix)
 	state.CreatedAt = types.StringValue(result.CreatedAt.Format(time.RFC3339))
 	state.UpdatedAt = types.StringValue(result.UpdatedAt.Format(time.RFC3339))
 
@@ -176,7 +170,6 @@ func (r *SourceACLResource) Update(ctx context.Context, req resource.UpdateReque
 	plan.ID = types.StringValue(result.ID)
 	plan.Name = types.StringValue(result.Name)
 	plan.Service = types.StringValue(result.Service)
-	plan.KeyPrefix = types.StringValue(result.KeyPrefix)
 	plan.CreatedAt = types.StringValue(result.CreatedAt.Format(time.RFC3339))
 	plan.UpdatedAt = types.StringValue(result.UpdatedAt.Format(time.RFC3339))
 

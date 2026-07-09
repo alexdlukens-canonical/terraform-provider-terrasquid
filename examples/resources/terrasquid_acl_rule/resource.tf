@@ -1,6 +1,6 @@
 resource "terrasquid_acl_rule" "example" {
-  name     = "allow-internal"
-  priority = 100
-  src      = terrasquid_source_acl.example.id
-  dst      = terrasquid_destination_config.example.id
+  name         = "allow-internal"
+  priority     = 100
+  sources      = [terrasquid_source_acl.example.id]
+  destinations = [terrasquid_destination_config.example.id]
 }

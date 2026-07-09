@@ -26,17 +26,14 @@ type ACLRuleResource struct {
 }
 
 type ACLRuleResourceModel struct {
-	ID        types.String `tfsdk:"id"`
-	Name      types.String `tfsdk:"name"`
-	Priority  types.Int64  `tfsdk:"priority"`
-	Src       types.String `tfsdk:"src"`
-	SrcGroup  types.String `tfsdk:"src_group"`
-	Dst       types.String `tfsdk:"dst"`
-	DstGroup  types.String `tfsdk:"dst_group"`
-	Service   types.String `tfsdk:"service"`
-	KeyPrefix types.String `tfsdk:"key_prefix"`
-	CreatedAt types.String `tfsdk:"created_at"`
-	UpdatedAt types.String `tfsdk:"updated_at"`
+	ID           types.String `tfsdk:"id"`
+	Name         types.String `tfsdk:"name"`
+	Priority     types.Int64  `tfsdk:"priority"`
+	Sources      types.List   `tfsdk:"sources"`
+	Destinations types.List   `tfsdk:"destinations"`
+	Service      types.String `tfsdk:"service"`
+	CreatedAt    types.String `tfsdk:"created_at"`
+	UpdatedAt    types.String `tfsdk:"updated_at"`
 }
 
 func NewACLRuleResource() resource.Resource {
@@ -68,25 +65,15 @@ func (r *ACLRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Computed: true,
 				Default:  int64default.StaticInt64(100),
 			},
-			"src": schema.StringAttribute{
-				Optional: true,
+			"sources": schema.ListAttribute{
+				ElementType: types.StringType,
+				Required:    true,
 			},
-			"src_group": schema.StringAttribute{
-				Optional: true,
-			},
-			"dst": schema.StringAttribute{
-				Optional: true,
-			},
-			"dst_group": schema.StringAttribute{
-				Optional: true,
+			"destinations": schema.ListAttribute{
+				ElementType: types.StringType,
+				Required:    true,
 			},
 			"service": schema.StringAttribute{
-				Computed: true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"key_prefix": schema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
@@ -123,13 +110,19 @@ func (r *ACLRuleResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
+	var sources []string
+	resp.Diagnostics.Append(plan.Sources.ElementsAs(ctx, &sources, false)...)
+	var destinations []string
+	resp.Diagnostics.Append(plan.Destinations.ElementsAs(ctx, &destinations, false)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	input := model.ACLRuleInput{
-		Name:     plan.Name.ValueString(),
-		Priority: int(plan.Priority.ValueInt64()),
-		Src:      stringPtr(plan.Src),
-		SrcGroup: stringPtr(plan.SrcGroup),
-		Dst:      stringPtr(plan.Dst),
-		DstGroup: stringPtr(plan.DstGroup),
+		Name:         plan.Name.ValueString(),
+		Priority:     int(plan.Priority.ValueInt64()),
+		Sources:      sources,
+		Destinations: destinations,
 	}
 
 	result, err := r.client.CreateACLRule(ctx, input)
@@ -141,14 +134,17 @@ func (r *ACLRuleResource) Create(ctx context.Context, req resource.CreateRequest
 	plan.ID = types.StringValue(result.ID)
 	plan.Name = types.StringValue(result.Name)
 	plan.Priority = types.Int64Value(int64(result.Priority))
-	plan.Src = stringFromPtr(result.Src)
-	plan.SrcGroup = stringFromPtr(result.SrcGroup)
-	plan.Dst = stringFromPtr(result.Dst)
-	plan.DstGroup = stringFromPtr(result.DstGroup)
 	plan.Service = types.StringValue(result.Service)
-	plan.KeyPrefix = types.StringValue(result.KeyPrefix)
 	plan.CreatedAt = types.StringValue(result.CreatedAt.Format(time.RFC3339))
 	plan.UpdatedAt = types.StringValue(result.UpdatedAt.Format(time.RFC3339))
+
+	sourcesList, diags := types.ListValueFrom(ctx, types.StringType, result.Sources)
+	resp.Diagnostics.Append(diags...)
+	plan.Sources = sourcesList
+
+	destinationsList, diags := types.ListValueFrom(ctx, types.StringType, result.Destinations)
+	resp.Diagnostics.Append(diags...)
+	plan.Destinations = destinationsList
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
@@ -173,14 +169,17 @@ func (r *ACLRuleResource) Read(ctx context.Context, req resource.ReadRequest, re
 	state.ID = types.StringValue(result.ID)
 	state.Name = types.StringValue(result.Name)
 	state.Priority = types.Int64Value(int64(result.Priority))
-	state.Src = stringFromPtr(result.Src)
-	state.SrcGroup = stringFromPtr(result.SrcGroup)
-	state.Dst = stringFromPtr(result.Dst)
-	state.DstGroup = stringFromPtr(result.DstGroup)
 	state.Service = types.StringValue(result.Service)
-	state.KeyPrefix = types.StringValue(result.KeyPrefix)
 	state.CreatedAt = types.StringValue(result.CreatedAt.Format(time.RFC3339))
 	state.UpdatedAt = types.StringValue(result.UpdatedAt.Format(time.RFC3339))
+
+	sourcesList, diags := types.ListValueFrom(ctx, types.StringType, result.Sources)
+	resp.Diagnostics.Append(diags...)
+	state.Sources = sourcesList
+
+	destinationsList, diags := types.ListValueFrom(ctx, types.StringType, result.Destinations)
+	resp.Diagnostics.Append(diags...)
+	state.Destinations = destinationsList
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
@@ -194,13 +193,19 @@ func (r *ACLRuleResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
+	var sources []string
+	resp.Diagnostics.Append(plan.Sources.ElementsAs(ctx, &sources, false)...)
+	var destinations []string
+	resp.Diagnostics.Append(plan.Destinations.ElementsAs(ctx, &destinations, false)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	input := model.ACLRuleInput{
-		Name:     plan.Name.ValueString(),
-		Priority: int(plan.Priority.ValueInt64()),
-		Src:      stringPtr(plan.Src),
-		SrcGroup: stringPtr(plan.SrcGroup),
-		Dst:      stringPtr(plan.Dst),
-		DstGroup: stringPtr(plan.DstGroup),
+		Name:         plan.Name.ValueString(),
+		Priority:     int(plan.Priority.ValueInt64()),
+		Sources:      sources,
+		Destinations: destinations,
 	}
 
 	id := plan.ID.ValueString()
@@ -216,14 +221,17 @@ func (r *ACLRuleResource) Update(ctx context.Context, req resource.UpdateRequest
 	plan.ID = types.StringValue(result.ID)
 	plan.Name = types.StringValue(result.Name)
 	plan.Priority = types.Int64Value(int64(result.Priority))
-	plan.Src = stringFromPtr(result.Src)
-	plan.SrcGroup = stringFromPtr(result.SrcGroup)
-	plan.Dst = stringFromPtr(result.Dst)
-	plan.DstGroup = stringFromPtr(result.DstGroup)
 	plan.Service = types.StringValue(result.Service)
-	plan.KeyPrefix = types.StringValue(result.KeyPrefix)
 	plan.CreatedAt = types.StringValue(result.CreatedAt.Format(time.RFC3339))
 	plan.UpdatedAt = types.StringValue(result.UpdatedAt.Format(time.RFC3339))
+
+	sourcesList, diags := types.ListValueFrom(ctx, types.StringType, result.Sources)
+	resp.Diagnostics.Append(diags...)
+	plan.Sources = sourcesList
+
+	destinationsList, diags := types.ListValueFrom(ctx, types.StringType, result.Destinations)
+	resp.Diagnostics.Append(diags...)
+	plan.Destinations = destinationsList
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
@@ -247,17 +255,4 @@ func (r *ACLRuleResource) Delete(ctx context.Context, req resource.DeleteRequest
 
 func (r *ACLRuleResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
-}
-
-func (r *ACLRuleResource) ConfigValidators(_ context.Context) []resource.ConfigValidator {
-	return []resource.ConfigValidator{
-		xorFieldValidator{
-			fieldA: path.Root("src"),
-			fieldB: path.Root("src_group"),
-		},
-		xorFieldValidator{
-			fieldA: path.Root("dst"),
-			fieldB: path.Root("dst_group"),
-		},
-	}
 }

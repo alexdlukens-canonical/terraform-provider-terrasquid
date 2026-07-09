@@ -26,25 +26,19 @@ func testAccProviderConfig() string {
 }
 
 type mockStore struct {
-	mu           sync.Mutex
-	nextID       int
-	requireAuth  bool
-	sourceACLs   map[string]model.SourceACL
-	sourceGroups map[string]model.SourceGroup
-	portGroups   map[string]model.PortGroup
-	destConfigs  map[string]model.DestinationConfig
-	destGroups   map[string]model.DestinationGroup
-	aclRules     map[string]model.ACLRule
+	mu          sync.Mutex
+	nextID      int
+	requireAuth bool
+	sourceACLs  map[string]model.SourceACL
+	destConfigs map[string]model.DestinationConfig
+	aclRules    map[string]model.ACLRule
 }
 
 func newMockStore() *mockStore {
 	return &mockStore{
-		sourceACLs:   make(map[string]model.SourceACL),
-		sourceGroups: make(map[string]model.SourceGroup),
-		portGroups:   make(map[string]model.PortGroup),
-		destConfigs:  make(map[string]model.DestinationConfig),
-		destGroups:   make(map[string]model.DestinationGroup),
-		aclRules:     make(map[string]model.ACLRule),
+		sourceACLs:  make(map[string]model.SourceACL),
+		destConfigs: make(map[string]model.DestinationConfig),
+		aclRules:    make(map[string]model.ACLRule),
 	}
 }
 
@@ -100,14 +94,8 @@ func newMockServer(t *testing.T) (*httptest.Server, *mockStore) {
 		switch {
 		case strings.HasPrefix(path, "/sources/"):
 			handleSourceACLs(store, w, r)
-		case strings.HasPrefix(path, "/source-groups/"):
-			handleSourceGroups(store, w, r)
-		case strings.HasPrefix(path, "/port-groups/"):
-			handlePortGroups(store, w, r)
 		case strings.HasPrefix(path, "/destinations/"):
 			handleDestConfigs(store, w, r)
-		case strings.HasPrefix(path, "/destination-groups/"):
-			handleDestGroups(store, w, r)
 		case strings.HasPrefix(path, "/acl-rules/"):
 			handleACLRules(store, w, r)
 		default:
@@ -198,153 +186,6 @@ func handleSourceACLs(s *mockStore, w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleSourceGroups(s *mockStore, w http.ResponseWriter, r *http.Request) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	path := r.URL.Path
-
-	switch {
-	case path == "/source-groups/" && r.Method == http.MethodPost:
-		var input model.SourceGroupInput
-		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		id := s.newID()
-		item := model.SourceGroup{
-			BaseResource: s.baseResource(id, input.Name),
-			Sources:      input.Sources,
-		}
-		s.sourceGroups[id] = item
-		_ = json.NewEncoder(w).Encode(item)
-
-	case path == "/source-groups/" && r.Method == http.MethodGet:
-		name := r.URL.Query().Get("name")
-		if name != "" {
-			for _, v := range s.sourceGroups {
-				if v.Name == name {
-					_ = json.NewEncoder(w).Encode([]model.SourceGroup{v})
-					return
-				}
-			}
-			w.WriteHeader(http.StatusNotFound)
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-				"error":   "NotFound",
-				"message": "Source group not found",
-			})
-			return
-		}
-		var items []model.SourceGroup
-		for _, v := range s.sourceGroups {
-			items = append(items, v)
-		}
-		_ = json.NewEncoder(w).Encode(items)
-
-	default:
-		id := extractID(path, "/source-groups/")
-		if id == "" {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-		item, ok := s.sourceGroups[id]
-		if !ok {
-			w.WriteHeader(http.StatusNotFound)
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-				"error":   "NotFound",
-				"message": "Source group not found",
-			})
-			return
-		}
-
-		switch r.Method {
-		case http.MethodGet:
-			_ = json.NewEncoder(w).Encode(item)
-		case http.MethodPut:
-			var input model.SourceGroupInput
-			if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-			item.Name = input.Name
-			item.Sources = input.Sources
-			item.UpdatedAt = time.Now()
-			s.sourceGroups[id] = item
-			_ = json.NewEncoder(w).Encode(item)
-		case http.MethodDelete:
-			delete(s.sourceGroups, id)
-			w.WriteHeader(http.StatusNoContent)
-		default:
-			w.WriteHeader(http.StatusMethodNotAllowed)
-		}
-	}
-}
-
-func handlePortGroups(s *mockStore, w http.ResponseWriter, r *http.Request) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	path := r.URL.Path
-
-	switch {
-	case path == "/port-groups/" && r.Method == http.MethodPost:
-		var input model.PortGroupInput
-		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		id := s.newID()
-		item := model.PortGroup{
-			BaseResource: s.baseResource(id, input.Name),
-			Ports:        input.Ports,
-		}
-		s.portGroups[id] = item
-		_ = json.NewEncoder(w).Encode(item)
-
-	case path == "/port-groups/" && r.Method == http.MethodGet:
-		var items []model.PortGroup
-		for _, v := range s.portGroups {
-			items = append(items, v)
-		}
-		_ = json.NewEncoder(w).Encode(items)
-
-	default:
-		id := extractID(path, "/port-groups/")
-		if id == "" {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-		item, ok := s.portGroups[id]
-		if !ok {
-			w.WriteHeader(http.StatusNotFound)
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-				"error":   "NotFound",
-				"message": "Port group not found",
-			})
-			return
-		}
-
-		switch r.Method {
-		case http.MethodGet:
-			_ = json.NewEncoder(w).Encode(item)
-		case http.MethodPut:
-			var input model.PortGroupInput
-			if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-			item.Name = input.Name
-			item.Ports = input.Ports
-			item.UpdatedAt = time.Now()
-			s.portGroups[id] = item
-			_ = json.NewEncoder(w).Encode(item)
-		case http.MethodDelete:
-			delete(s.portGroups, id)
-			w.WriteHeader(http.StatusNoContent)
-		default:
-			w.WriteHeader(http.StatusMethodNotAllowed)
-		}
-	}
-}
-
 func handleDestConfigs(s *mockStore, w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -363,7 +204,6 @@ func handleDestConfigs(s *mockStore, w http.ResponseWriter, r *http.Request) {
 			Dst:          input.Dst,
 			Type:         input.Type,
 			Ports:        input.Ports,
-			PortGroups:   input.PortGroups,
 		}
 		s.destConfigs[id] = item
 		_ = json.NewEncoder(w).Encode(item)
@@ -404,93 +244,11 @@ func handleDestConfigs(s *mockStore, w http.ResponseWriter, r *http.Request) {
 			item.Dst = input.Dst
 			item.Type = input.Type
 			item.Ports = input.Ports
-			item.PortGroups = input.PortGroups
 			item.UpdatedAt = time.Now()
 			s.destConfigs[id] = item
 			_ = json.NewEncoder(w).Encode(item)
 		case http.MethodDelete:
 			delete(s.destConfigs, id)
-			w.WriteHeader(http.StatusNoContent)
-		default:
-			w.WriteHeader(http.StatusMethodNotAllowed)
-		}
-	}
-}
-
-func handleDestGroups(s *mockStore, w http.ResponseWriter, r *http.Request) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	path := r.URL.Path
-
-	switch {
-	case path == "/destination-groups/" && r.Method == http.MethodPost:
-		var input model.DestinationGroupInput
-		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		id := s.newID()
-		item := model.DestinationGroup{
-			BaseResource: s.baseResource(id, input.Name),
-			Destinations: input.Destinations,
-		}
-		s.destGroups[id] = item
-		_ = json.NewEncoder(w).Encode(item)
-
-	case path == "/destination-groups/" && r.Method == http.MethodGet:
-		name := r.URL.Query().Get("name")
-		if name != "" {
-			for _, v := range s.destGroups {
-				if v.Name == name {
-					_ = json.NewEncoder(w).Encode([]model.DestinationGroup{v})
-					return
-				}
-			}
-			w.WriteHeader(http.StatusNotFound)
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-				"error":   "NotFound",
-				"message": "Destination group not found",
-			})
-			return
-		}
-		var items []model.DestinationGroup
-		for _, v := range s.destGroups {
-			items = append(items, v)
-		}
-		_ = json.NewEncoder(w).Encode(items)
-
-	default:
-		id := extractID(path, "/destination-groups/")
-		if id == "" {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-		item, ok := s.destGroups[id]
-		if !ok {
-			w.WriteHeader(http.StatusNotFound)
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-				"error":   "NotFound",
-				"message": "Destination group not found",
-			})
-			return
-		}
-
-		switch r.Method {
-		case http.MethodGet:
-			_ = json.NewEncoder(w).Encode(item)
-		case http.MethodPut:
-			var input model.DestinationGroupInput
-			if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-			item.Name = input.Name
-			item.Destinations = input.Destinations
-			item.UpdatedAt = time.Now()
-			s.destGroups[id] = item
-			_ = json.NewEncoder(w).Encode(item)
-		case http.MethodDelete:
-			delete(s.destGroups, id)
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -514,10 +272,8 @@ func handleACLRules(s *mockStore, w http.ResponseWriter, r *http.Request) {
 		item := model.ACLRule{
 			BaseResource: s.baseResource(id, "acl-rule"),
 			Priority:     input.Priority,
-			Src:          input.Src,
-			SrcGroup:     input.SrcGroup,
-			Dst:          input.Dst,
-			DstGroup:     input.DstGroup,
+			Sources:      input.Sources,
+			Destinations: input.Destinations,
 		}
 		s.aclRules[id] = item
 		_ = json.NewEncoder(w).Encode(item)
@@ -555,10 +311,8 @@ func handleACLRules(s *mockStore, w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			item.Priority = input.Priority
-			item.Src = input.Src
-			item.SrcGroup = input.SrcGroup
-			item.Dst = input.Dst
-			item.DstGroup = input.DstGroup
+			item.Sources = input.Sources
+			item.Destinations = input.Destinations
 			item.UpdatedAt = time.Now()
 			s.aclRules[id] = item
 			_ = json.NewEncoder(w).Encode(item)

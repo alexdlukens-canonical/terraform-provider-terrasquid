@@ -29,8 +29,7 @@ func TestListDestinationConfigs(t *testing.T) {
 				"updated_at": "2024-01-01T00:00:00Z",
 				"dst": "10.0.0.1",
 				"type": "allow",
-				"ports": [80, 443],
-				"port_groups": ["pg-1"]
+				"ports": [80, 443]
 			}
 		]`))
 	}
@@ -54,9 +53,6 @@ func TestListDestinationConfigs(t *testing.T) {
 	}
 	if len(dc.Ports) != 2 || dc.Ports[0] != 80 || dc.Ports[1] != 443 {
 		t.Errorf("Ports = %v, want [80 443]", dc.Ports)
-	}
-	if len(dc.PortGroups) != 1 || dc.PortGroups[0] != "pg-1" {
-		t.Errorf("PortGroups = %v, want [pg-1]", dc.PortGroups)
 	}
 }
 
@@ -84,8 +80,7 @@ func TestCreateDestinationConfig(t *testing.T) {
 			"updated_at": "2024-01-01T00:00:00Z",
 			"dst": "192.168.1.1",
 			"type": "deny",
-			"ports": [22],
-			"port_groups": []
+			"ports": [22]
 		}`))
 	}
 	client, _ := newTestClient(t, handler)
@@ -129,8 +124,7 @@ func TestGetDestinationConfig(t *testing.T) {
 			"updated_at": "2024-01-01T00:00:00Z",
 			"dst": "10.0.0.1",
 			"type": "allow",
-			"ports": [80],
-			"port_groups": []
+			"ports": [80]
 		}`))
 	}
 	client, _ := newTestClient(t, handler)
@@ -167,17 +161,15 @@ func TestUpdateDestinationConfig(t *testing.T) {
 			"updated_at": "2024-01-02T00:00:00Z",
 			"dst": "10.0.0.2",
 			"type": "allow",
-			"ports": [8080],
-			"port_groups": ["pg-2"]
+			"ports": [8080]
 		}`))
 	}
 	client, _ := newTestClient(t, handler)
 	input := model.DestinationConfigInput{
-		Name:       "updated-dc",
-		Dst:        "10.0.0.2",
-		Type:       "allow",
-		Ports:      []int{8080},
-		PortGroups: []string{"pg-2"},
+		Name:  "updated-dc",
+		Dst:   "10.0.0.2",
+		Type:  "allow",
+		Ports: []int{8080},
 	}
 	dc, err := client.UpdateDestinationConfig(context.Background(), "dc-1", input)
 	if err != nil {

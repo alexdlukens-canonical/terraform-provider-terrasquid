@@ -26,7 +26,6 @@ resource "terrasquid_source_acl" "test" {
 					resource.TestCheckResourceAttr("terrasquid_source_acl.test", "cidr.#", "2"),
 					resource.TestCheckResourceAttr("terrasquid_source_acl.test", "cidr.0", "10.0.0.0/8"),
 					resource.TestCheckResourceAttr("terrasquid_source_acl.test", "service", "terrasquid"),
-					resource.TestCheckResourceAttr("terrasquid_source_acl.test", "key_prefix", "/test/"),
 					resource.TestCheckResourceAttrSet("terrasquid_source_acl.test", "id"),
 					resource.TestCheckResourceAttrSet("terrasquid_source_acl.test", "created_at"),
 					resource.TestCheckResourceAttrSet("terrasquid_source_acl.test", "updated_at"),

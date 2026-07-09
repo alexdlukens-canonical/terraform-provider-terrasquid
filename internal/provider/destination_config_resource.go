@@ -26,16 +26,14 @@ type DestinationConfigResource struct {
 }
 
 type DestinationConfigResourceModel struct {
-	ID         types.String `tfsdk:"id"`
-	Name       types.String `tfsdk:"name"`
-	Dst        types.String `tfsdk:"dst"`
-	Type       types.String `tfsdk:"type"`
-	Ports      types.List   `tfsdk:"ports"`
-	PortGroups types.List   `tfsdk:"port_groups"`
-	Service    types.String `tfsdk:"service"`
-	KeyPrefix  types.String `tfsdk:"key_prefix"`
-	CreatedAt  types.String `tfsdk:"created_at"`
-	UpdatedAt  types.String `tfsdk:"updated_at"`
+	ID        types.String `tfsdk:"id"`
+	Name      types.String `tfsdk:"name"`
+	Dst       types.String `tfsdk:"dst"`
+	Type      types.String `tfsdk:"type"`
+	Ports     types.List   `tfsdk:"ports"`
+	Service   types.String `tfsdk:"service"`
+	CreatedAt types.String `tfsdk:"created_at"`
+	UpdatedAt types.String `tfsdk:"updated_at"`
 }
 
 func NewDestinationConfigResource() resource.Resource {
@@ -75,14 +73,7 @@ func (r *DestinationConfigResource) Schema(_ context.Context, _ resource.SchemaR
 				ElementType: types.Int64Type,
 				Optional:    true,
 			},
-			"port_groups": schema.ListAttribute{
-				ElementType: types.StringType,
-				Optional:    true,
-			},
 			"service": schema.StringAttribute{
-				Computed: true,
-			},
-			"key_prefix": schema.StringAttribute{
 				Computed: true,
 			},
 			"created_at": schema.StringAttribute{
@@ -131,15 +122,6 @@ func (r *DestinationConfigResource) Create(ctx context.Context, req resource.Cre
 		input.Ports = int64SliceToIntSlice(sortInt64Slice(portsInt64))
 	}
 
-	if !plan.PortGroups.IsNull() {
-		var portGroupsSlice []string
-		resp.Diagnostics.Append(plan.PortGroups.ElementsAs(ctx, &portGroupsSlice, false)...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		input.PortGroups = portGroupsSlice
-	}
-
 	result, err := r.client.CreateDestinationConfig(ctx, input)
 	if err != nil {
 		resp.Diagnostics.AddError("API Error", fmt.Sprintf("Failed to create destination config: %s", err))
@@ -151,17 +133,12 @@ func (r *DestinationConfigResource) Create(ctx context.Context, req resource.Cre
 	plan.Dst = types.StringValue(result.Dst)
 	plan.Type = types.StringValue(result.Type)
 	plan.Service = types.StringValue(result.Service)
-	plan.KeyPrefix = types.StringValue(result.KeyPrefix)
 	plan.CreatedAt = types.StringValue(result.CreatedAt.Format(time.RFC3339))
 	plan.UpdatedAt = types.StringValue(result.UpdatedAt.Format(time.RFC3339))
 
 	portsList, diags := destinationConfigIntListValue(ctx, plan.Ports, sortIntSlice(result.Ports))
 	resp.Diagnostics.Append(diags...)
 	plan.Ports = portsList
-
-	portGroupsList, diags := destinationConfigStringListValue(ctx, plan.PortGroups, result.PortGroups)
-	resp.Diagnostics.Append(diags...)
-	plan.PortGroups = portGroupsList
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
@@ -188,17 +165,12 @@ func (r *DestinationConfigResource) Read(ctx context.Context, req resource.ReadR
 	state.Dst = types.StringValue(result.Dst)
 	state.Type = types.StringValue(result.Type)
 	state.Service = types.StringValue(result.Service)
-	state.KeyPrefix = types.StringValue(result.KeyPrefix)
 	state.CreatedAt = types.StringValue(result.CreatedAt.Format(time.RFC3339))
 	state.UpdatedAt = types.StringValue(result.UpdatedAt.Format(time.RFC3339))
 
 	portsList, diags := destinationConfigIntListValue(ctx, state.Ports, sortIntSlice(result.Ports))
 	resp.Diagnostics.Append(diags...)
 	state.Ports = portsList
-
-	portGroupsList, diags := destinationConfigStringListValue(ctx, state.PortGroups, result.PortGroups)
-	resp.Diagnostics.Append(diags...)
-	state.PortGroups = portGroupsList
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
@@ -227,15 +199,6 @@ func (r *DestinationConfigResource) Update(ctx context.Context, req resource.Upd
 		input.Ports = int64SliceToIntSlice(sortInt64Slice(portsInt64))
 	}
 
-	if !plan.PortGroups.IsNull() {
-		var portGroupsSlice []string
-		resp.Diagnostics.Append(plan.PortGroups.ElementsAs(ctx, &portGroupsSlice, false)...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		input.PortGroups = portGroupsSlice
-	}
-
 	id := plan.ID.ValueString()
 	if id == "" {
 		id = state.ID.ValueString()
@@ -251,17 +214,12 @@ func (r *DestinationConfigResource) Update(ctx context.Context, req resource.Upd
 	plan.Dst = types.StringValue(result.Dst)
 	plan.Type = types.StringValue(result.Type)
 	plan.Service = types.StringValue(result.Service)
-	plan.KeyPrefix = types.StringValue(result.KeyPrefix)
 	plan.CreatedAt = types.StringValue(result.CreatedAt.Format(time.RFC3339))
 	plan.UpdatedAt = types.StringValue(result.UpdatedAt.Format(time.RFC3339))
 
 	portsList, diags := destinationConfigIntListValue(ctx, plan.Ports, sortIntSlice(result.Ports))
 	resp.Diagnostics.Append(diags...)
 	plan.Ports = portsList
-
-	portGroupsList, diags := destinationConfigStringListValue(ctx, plan.PortGroups, result.PortGroups)
-	resp.Diagnostics.Append(diags...)
-	plan.PortGroups = portGroupsList
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
@@ -296,11 +254,4 @@ func destinationConfigIntListValue(ctx context.Context, current types.List, valu
 		return types.ListNull(types.Int64Type), nil
 	}
 	return types.ListValueFrom(ctx, types.Int64Type, intSliceToInt64Slice(values))
-}
-
-func destinationConfigStringListValue(ctx context.Context, current types.List, values []string) (types.List, diag.Diagnostics) {
-	if len(values) == 0 && current.IsNull() {
-		return types.ListNull(types.StringType), nil
-	}
-	return types.ListValueFrom(ctx, types.StringType, values)
 }

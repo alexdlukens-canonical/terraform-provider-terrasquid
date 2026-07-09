@@ -1,6 +1,6 @@
 # Terraform Provider Terrasquid
 
-The Terrasquid provider allows you to manage resources for Terrasquid (Squid-as-a-Service), including Source/Destination groups, ACL rules, and configuration settings.
+The Terrasquid provider allows you to manage resources for Terrasquid (Squid-as-a-Service), including source ACLs, destination configurations, and ACL rules.
 
 ## Requirements
 
@@ -27,11 +27,10 @@ provider "terrasquid" {
   api_key  = var.terrasquid_api_key
 }
 
-# Example: Define a source group
-resource "terrasquid_source_group" "example" {
-  name        = "internal-networks"
-  description = "Internal network ranges"
-  cidrs       = ["192.168.1.0/24", "10.0.0.0/8"]
+# Example: Define a source ACL
+resource "terrasquid_source_acl" "example" {
+  name = "internal-networks"
+  cidr = ["192.168.1.0/24", "10.0.0.0/8"]
 }
 ```
 

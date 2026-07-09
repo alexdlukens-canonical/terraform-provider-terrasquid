@@ -23,14 +23,12 @@ resource "terrasquid_destination_config" "example" {
 
 ### Optional
 
-- `ports` (List of Number) List of port numbers.
-- `port_groups` (List of String) List of port group IDs to reference.
+- `ports` (List of Number) List of port numbers. Defaults to `443` for `CONNECT`, otherwise `80`.
 
 ### Read-Only
 
 - `id` (String) Server-assigned UUID.
 - `service` (String) Service namespace.
-- `key_prefix` (String) The key prefix used for this resource.
 - `created_at` (String) Creation timestamp.
 - `updated_at` (String) Last update timestamp.
 
