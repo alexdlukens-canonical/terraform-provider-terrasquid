@@ -136,6 +136,7 @@ func handleSourceACLs(s *mockStore, w http.ResponseWriter, r *http.Request) {
 		item := model.SourceACL{
 			BaseResource: s.baseResource(id, input.Name),
 			CIDR:         input.CIDR,
+			Comment:      input.Comment,
 		}
 		s.sourceACLs[id] = item
 		_ = json.NewEncoder(w).Encode(item)
@@ -174,6 +175,7 @@ func handleSourceACLs(s *mockStore, w http.ResponseWriter, r *http.Request) {
 			}
 			item.Name = input.Name
 			item.CIDR = input.CIDR
+			item.Comment = input.Comment
 			item.UpdatedAt = time.Now()
 			s.sourceACLs[id] = item
 			_ = json.NewEncoder(w).Encode(item)
@@ -204,6 +206,7 @@ func handleDestConfigs(s *mockStore, w http.ResponseWriter, r *http.Request) {
 			Dst:          input.Dst,
 			Type:         input.Type,
 			Ports:        input.Ports,
+			Comment:      input.Comment,
 		}
 		s.destConfigs[id] = item
 		_ = json.NewEncoder(w).Encode(item)
@@ -244,6 +247,7 @@ func handleDestConfigs(s *mockStore, w http.ResponseWriter, r *http.Request) {
 			item.Dst = input.Dst
 			item.Type = input.Type
 			item.Ports = input.Ports
+			item.Comment = input.Comment
 			item.UpdatedAt = time.Now()
 			s.destConfigs[id] = item
 			_ = json.NewEncoder(w).Encode(item)
@@ -272,6 +276,7 @@ func handleACLRules(s *mockStore, w http.ResponseWriter, r *http.Request) {
 		item := model.ACLRule{
 			BaseResource: s.baseResource(id, "acl-rule"),
 			Priority:     input.Priority,
+			Comment:      input.Comment,
 			Sources:      input.Sources,
 			Destinations: input.Destinations,
 		}
@@ -311,6 +316,7 @@ func handleACLRules(s *mockStore, w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			item.Priority = input.Priority
+			item.Comment = input.Comment
 			item.Sources = input.Sources
 			item.Destinations = input.Destinations
 			item.UpdatedAt = time.Now()

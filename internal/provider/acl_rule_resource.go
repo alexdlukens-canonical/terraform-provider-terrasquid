@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -29,6 +30,7 @@ type ACLRuleResourceModel struct {
 	ID           types.String `tfsdk:"id"`
 	Name         types.String `tfsdk:"name"`
 	Priority     types.Int64  `tfsdk:"priority"`
+	Comment      types.String `tfsdk:"comment"`
 	Sources      types.List   `tfsdk:"sources"`
 	Destinations types.List   `tfsdk:"destinations"`
 	Service      types.String `tfsdk:"service"`
@@ -64,6 +66,11 @@ func (r *ACLRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Optional: true,
 				Computed: true,
 				Default:  int64default.StaticInt64(100),
+			},
+			"comment": schema.StringAttribute{
+				Optional: true,
+				Computed: true,
+				Default:  stringdefault.StaticString(""),
 			},
 			"sources": schema.ListAttribute{
 				ElementType: types.StringType,
@@ -121,6 +128,7 @@ func (r *ACLRuleResource) Create(ctx context.Context, req resource.CreateRequest
 	input := model.ACLRuleInput{
 		Name:         plan.Name.ValueString(),
 		Priority:     int(plan.Priority.ValueInt64()),
+		Comment:      plan.Comment.ValueString(),
 		Sources:      sources,
 		Destinations: destinations,
 	}
@@ -134,6 +142,7 @@ func (r *ACLRuleResource) Create(ctx context.Context, req resource.CreateRequest
 	plan.ID = types.StringValue(result.ID)
 	plan.Name = types.StringValue(result.Name)
 	plan.Priority = types.Int64Value(int64(result.Priority))
+	plan.Comment = types.StringValue(result.Comment)
 	plan.Service = types.StringValue(result.Service)
 	plan.CreatedAt = types.StringValue(result.CreatedAt.Format(time.RFC3339))
 	plan.UpdatedAt = types.StringValue(result.UpdatedAt.Format(time.RFC3339))
@@ -169,6 +178,7 @@ func (r *ACLRuleResource) Read(ctx context.Context, req resource.ReadRequest, re
 	state.ID = types.StringValue(result.ID)
 	state.Name = types.StringValue(result.Name)
 	state.Priority = types.Int64Value(int64(result.Priority))
+	state.Comment = types.StringValue(result.Comment)
 	state.Service = types.StringValue(result.Service)
 	state.CreatedAt = types.StringValue(result.CreatedAt.Format(time.RFC3339))
 	state.UpdatedAt = types.StringValue(result.UpdatedAt.Format(time.RFC3339))
@@ -204,6 +214,7 @@ func (r *ACLRuleResource) Update(ctx context.Context, req resource.UpdateRequest
 	input := model.ACLRuleInput{
 		Name:         plan.Name.ValueString(),
 		Priority:     int(plan.Priority.ValueInt64()),
+		Comment:      plan.Comment.ValueString(),
 		Sources:      sources,
 		Destinations: destinations,
 	}
@@ -221,6 +232,7 @@ func (r *ACLRuleResource) Update(ctx context.Context, req resource.UpdateRequest
 	plan.ID = types.StringValue(result.ID)
 	plan.Name = types.StringValue(result.Name)
 	plan.Priority = types.Int64Value(int64(result.Priority))
+	plan.Comment = types.StringValue(result.Comment)
 	plan.Service = types.StringValue(result.Service)
 	plan.CreatedAt = types.StringValue(result.CreatedAt.Format(time.RFC3339))
 	plan.UpdatedAt = types.StringValue(result.UpdatedAt.Format(time.RFC3339))

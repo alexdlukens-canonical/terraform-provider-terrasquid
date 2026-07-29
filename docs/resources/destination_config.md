@@ -10,6 +10,7 @@ resource "terrasquid_destination_config" "example" {
   dst        = "*.internal.example.com"
   type       = "ALLOW"
   ports      = [80, 443]
+  comment    = "Internal web services"
 }
 ```
 
@@ -24,6 +25,7 @@ resource "terrasquid_destination_config" "example" {
 ### Optional
 
 - `ports` (List of Number) List of port numbers. Defaults to `443` for `CONNECT`, otherwise `80`.
+- `comment` (String) Single-line comment emitted before the Squid destination ACLs. Defaults to an empty string, which emits no comment.
 
 ### Read-Only
 

@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/terrasquid/terraform-provider-terrasquid/internal/client"
@@ -26,6 +27,7 @@ type SourceACLResourceModel struct {
 	ID        types.String `tfsdk:"id"`
 	Name      types.String `tfsdk:"name"`
 	CIDR      types.List   `tfsdk:"cidr"`
+	Comment   types.String `tfsdk:"comment"`
 	Service   types.String `tfsdk:"service"`
 	CreatedAt types.String `tfsdk:"created_at"`
 	UpdatedAt types.String `tfsdk:"updated_at"`
@@ -55,6 +57,11 @@ func (r *SourceACLResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 			"cidr": schema.ListAttribute{
 				ElementType: types.StringType,
 				Required:    true,
+			},
+			"comment": schema.StringAttribute{
+				Optional: true,
+				Computed: true,
+				Default:  stringdefault.StaticString(""),
 			},
 			"service": schema.StringAttribute{
 				Computed: true,
@@ -94,8 +101,9 @@ func (r *SourceACLResource) Create(ctx context.Context, req resource.CreateReque
 	}
 
 	result, err := r.client.CreateSourceACL(ctx, model.SourceACLInput{
-		Name: plan.Name.ValueString(),
-		CIDR: cidrSlice,
+		Name:    plan.Name.ValueString(),
+		CIDR:    cidrSlice,
+		Comment: plan.Comment.ValueString(),
 	})
 	if err != nil {
 		resp.Diagnostics.AddError("API Error", fmt.Sprintf("Failed to create source ACL: %s", err))
@@ -104,6 +112,7 @@ func (r *SourceACLResource) Create(ctx context.Context, req resource.CreateReque
 
 	plan.ID = types.StringValue(result.ID)
 	plan.Name = types.StringValue(result.Name)
+	plan.Comment = types.StringValue(result.Comment)
 	plan.Service = types.StringValue(result.Service)
 	plan.CreatedAt = types.StringValue(result.CreatedAt.Format(time.RFC3339))
 	plan.UpdatedAt = types.StringValue(result.UpdatedAt.Format(time.RFC3339))
@@ -134,6 +143,7 @@ func (r *SourceACLResource) Read(ctx context.Context, req resource.ReadRequest, 
 
 	state.ID = types.StringValue(result.ID)
 	state.Name = types.StringValue(result.Name)
+	state.Comment = types.StringValue(result.Comment)
 	state.Service = types.StringValue(result.Service)
 	state.CreatedAt = types.StringValue(result.CreatedAt.Format(time.RFC3339))
 	state.UpdatedAt = types.StringValue(result.UpdatedAt.Format(time.RFC3339))
@@ -147,7 +157,9 @@ func (r *SourceACLResource) Read(ctx context.Context, req resource.ReadRequest, 
 
 func (r *SourceACLResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan SourceACLResourceModel
+	var state SourceACLResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -158,9 +170,14 @@ func (r *SourceACLResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	result, err := r.client.UpdateSourceACL(ctx, plan.ID.ValueString(), model.SourceACLInput{
-		Name: plan.Name.ValueString(),
-		CIDR: cidrSlice,
+	id := plan.ID.ValueString()
+	if id == "" {
+		id = state.ID.ValueString()
+	}
+	result, err := r.client.UpdateSourceACL(ctx, id, model.SourceACLInput{
+		Name:    plan.Name.ValueString(),
+		CIDR:    cidrSlice,
+		Comment: plan.Comment.ValueString(),
 	})
 	if err != nil {
 		resp.Diagnostics.AddError("API Error", fmt.Sprintf("Failed to update source ACL: %s", err))
@@ -169,6 +186,7 @@ func (r *SourceACLResource) Update(ctx context.Context, req resource.UpdateReque
 
 	plan.ID = types.StringValue(result.ID)
 	plan.Name = types.StringValue(result.Name)
+	plan.Comment = types.StringValue(result.Comment)
 	plan.Service = types.StringValue(result.Service)
 	plan.CreatedAt = types.StringValue(result.CreatedAt.Format(time.RFC3339))
 	plan.UpdatedAt = types.StringValue(result.UpdatedAt.Format(time.RFC3339))

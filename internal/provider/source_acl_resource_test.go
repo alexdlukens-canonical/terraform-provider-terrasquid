@@ -17,14 +17,16 @@ func TestAccSourceACLResource_basic(t *testing.T) {
 			{
 				Config: testAccProviderConfig() + `
 resource "terrasquid_source_acl" "test" {
-  name = "test-source"
-  cidr = ["10.0.0.0/8", "192.168.0.0/16"]
+	name    = "test-source"
+	cidr    = ["10.0.0.0/8", "192.168.0.0/16"]
+	comment = "Corporate networks"
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("terrasquid_source_acl.test", "name", "test-source"),
 					resource.TestCheckResourceAttr("terrasquid_source_acl.test", "cidr.#", "2"),
 					resource.TestCheckResourceAttr("terrasquid_source_acl.test", "cidr.0", "10.0.0.0/8"),
+					resource.TestCheckResourceAttr("terrasquid_source_acl.test", "comment", "Corporate networks"),
 					resource.TestCheckResourceAttr("terrasquid_source_acl.test", "service", "terrasquid"),
 					resource.TestCheckResourceAttrSet("terrasquid_source_acl.test", "id"),
 					resource.TestCheckResourceAttrSet("terrasquid_source_acl.test", "created_at"),
@@ -63,14 +65,16 @@ resource "terrasquid_source_acl" "test" {
 			{
 				Config: testAccProviderConfig() + `
 resource "terrasquid_source_acl" "test" {
-  name = "updated-source"
-  cidr = ["172.16.0.0/12"]
+	name    = "updated-source"
+	cidr    = ["172.16.0.0/12"]
+	comment = "Updated network"
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("terrasquid_source_acl.test", "name", "updated-source"),
 					resource.TestCheckResourceAttr("terrasquid_source_acl.test", "cidr.#", "1"),
 					resource.TestCheckResourceAttr("terrasquid_source_acl.test", "cidr.0", "172.16.0.0/12"),
+					resource.TestCheckResourceAttr("terrasquid_source_acl.test", "comment", "Updated network"),
 				),
 			},
 			{
@@ -99,6 +103,7 @@ resource "terrasquid_source_acl" "test" {
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("terrasquid_source_acl.test", "id"),
+					resource.TestCheckResourceAttr("terrasquid_source_acl.test", "comment", ""),
 				),
 			},
 			{

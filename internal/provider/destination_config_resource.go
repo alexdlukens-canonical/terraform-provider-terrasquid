@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -31,6 +32,7 @@ type DestinationConfigResourceModel struct {
 	Dst       types.String `tfsdk:"dst"`
 	Type      types.String `tfsdk:"type"`
 	Ports     types.List   `tfsdk:"ports"`
+	Comment   types.String `tfsdk:"comment"`
 	Service   types.String `tfsdk:"service"`
 	CreatedAt types.String `tfsdk:"created_at"`
 	UpdatedAt types.String `tfsdk:"updated_at"`
@@ -73,6 +75,11 @@ func (r *DestinationConfigResource) Schema(_ context.Context, _ resource.SchemaR
 				ElementType: types.Int64Type,
 				Optional:    true,
 			},
+			"comment": schema.StringAttribute{
+				Optional: true,
+				Computed: true,
+				Default:  stringdefault.StaticString(""),
+			},
 			"service": schema.StringAttribute{
 				Computed: true,
 			},
@@ -108,9 +115,10 @@ func (r *DestinationConfigResource) Create(ctx context.Context, req resource.Cre
 	}
 
 	input := model.DestinationConfigInput{
-		Name: plan.Name.ValueString(),
-		Dst:  plan.Dst.ValueString(),
-		Type: plan.Type.ValueString(),
+		Name:    plan.Name.ValueString(),
+		Dst:     plan.Dst.ValueString(),
+		Type:    plan.Type.ValueString(),
+		Comment: plan.Comment.ValueString(),
 	}
 
 	if !plan.Ports.IsNull() {
@@ -132,6 +140,7 @@ func (r *DestinationConfigResource) Create(ctx context.Context, req resource.Cre
 	plan.Name = types.StringValue(result.Name)
 	plan.Dst = types.StringValue(result.Dst)
 	plan.Type = types.StringValue(result.Type)
+	plan.Comment = types.StringValue(result.Comment)
 	plan.Service = types.StringValue(result.Service)
 	plan.CreatedAt = types.StringValue(result.CreatedAt.Format(time.RFC3339))
 	plan.UpdatedAt = types.StringValue(result.UpdatedAt.Format(time.RFC3339))
@@ -164,6 +173,7 @@ func (r *DestinationConfigResource) Read(ctx context.Context, req resource.ReadR
 	state.Name = types.StringValue(result.Name)
 	state.Dst = types.StringValue(result.Dst)
 	state.Type = types.StringValue(result.Type)
+	state.Comment = types.StringValue(result.Comment)
 	state.Service = types.StringValue(result.Service)
 	state.CreatedAt = types.StringValue(result.CreatedAt.Format(time.RFC3339))
 	state.UpdatedAt = types.StringValue(result.UpdatedAt.Format(time.RFC3339))
@@ -185,9 +195,10 @@ func (r *DestinationConfigResource) Update(ctx context.Context, req resource.Upd
 	}
 
 	input := model.DestinationConfigInput{
-		Name: plan.Name.ValueString(),
-		Dst:  plan.Dst.ValueString(),
-		Type: plan.Type.ValueString(),
+		Name:    plan.Name.ValueString(),
+		Dst:     plan.Dst.ValueString(),
+		Type:    plan.Type.ValueString(),
+		Comment: plan.Comment.ValueString(),
 	}
 
 	if !plan.Ports.IsNull() {
@@ -213,6 +224,7 @@ func (r *DestinationConfigResource) Update(ctx context.Context, req resource.Upd
 	plan.Name = types.StringValue(result.Name)
 	plan.Dst = types.StringValue(result.Dst)
 	plan.Type = types.StringValue(result.Type)
+	plan.Comment = types.StringValue(result.Comment)
 	plan.Service = types.StringValue(result.Service)
 	plan.CreatedAt = types.StringValue(result.CreatedAt.Format(time.RFC3339))
 	plan.UpdatedAt = types.StringValue(result.UpdatedAt.Format(time.RFC3339))

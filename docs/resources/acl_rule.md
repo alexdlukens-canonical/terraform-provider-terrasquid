@@ -8,6 +8,7 @@ Manage an ACL rule that links one or more sources to one or more destinations wi
 resource "terrasquid_acl_rule" "example" {
   name         = "allow-internal"
   priority     = 100
+  comment      = "Allow internal access"
   sources      = [terrasquid_source_acl.example.id]
   destinations = [terrasquid_destination_config.example.id]
 }
@@ -24,6 +25,7 @@ resource "terrasquid_acl_rule" "example" {
 ### Optional
 
 - `priority` (Number) Rule priority. Defaults to `100`.
+- `comment` (String) Single-line comment emitted before the Squid access rules. Defaults to an empty string, which emits no comment.
 
 ### Read-Only
 
