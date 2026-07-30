@@ -81,8 +81,9 @@ func TestCreateSourceACL(t *testing.T) {
 	}
 	client, _ := newTestClient(t, handler)
 	input := model.SourceACLInput{
-		Name: "new-acl",
-		CIDR: []string{"192.168.0.0/24"},
+		Name:    "new-acl",
+		CIDR:    []string{"192.168.0.0/24"},
+		Comment: "Branch office",
 	}
 	acl, err := client.CreateSourceACL(context.Background(), input)
 	if err != nil {
@@ -97,6 +98,9 @@ func TestCreateSourceACL(t *testing.T) {
 	}
 	if len(parsed.CIDR) != 1 || parsed.CIDR[0] != "192.168.0.0/24" {
 		t.Errorf("body CIDR = %v, want [192.168.0.0/24]", parsed.CIDR)
+	}
+	if parsed.Comment != "Branch office" {
+		t.Errorf("body comment = %q, want %q", parsed.Comment, "Branch office")
 	}
 	if acl.ID != "acl-new" {
 		t.Errorf("ID = %q, want %q", acl.ID, "acl-new")

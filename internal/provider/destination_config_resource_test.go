@@ -17,10 +17,11 @@ func TestAccDestinationConfigResource_basic(t *testing.T) {
 			{
 				Config: testAccProviderConfig() + `
 resource "terrasquid_destination_config" "test" {
-  name  = "test-dest"
-  dst   = "192.168.1.1"
-  type  = "ALLOW"
-  ports = [80, 443]
+	name    = "test-dest"
+	dst     = "192.168.1.1"
+	type    = "ALLOW"
+	ports   = [80, 443]
+	comment = "Internal web service"
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
@@ -29,6 +30,7 @@ resource "terrasquid_destination_config" "test" {
 					resource.TestCheckResourceAttr("terrasquid_destination_config.test", "type", "ALLOW"),
 					resource.TestCheckResourceAttr("terrasquid_destination_config.test", "ports.#", "2"),
 					resource.TestCheckResourceAttr("terrasquid_destination_config.test", "ports.0", "80"),
+					resource.TestCheckResourceAttr("terrasquid_destination_config.test", "comment", "Internal web service"),
 					resource.TestCheckResourceAttrSet("terrasquid_destination_config.test", "id"),
 				),
 			},
@@ -61,10 +63,11 @@ resource "terrasquid_destination_config" "test" {
 			{
 				Config: testAccProviderConfig() + `
 resource "terrasquid_destination_config" "test" {
-  name  = "test-dest"
-  dst   = "10.0.0.1"
-  type  = "DENY"
-  ports = [22]
+	name    = "test-dest"
+	dst     = "10.0.0.1"
+	type    = "DENY"
+	ports   = [22]
+	comment = "Block SSH"
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
@@ -72,6 +75,7 @@ resource "terrasquid_destination_config" "test" {
 					resource.TestCheckResourceAttr("terrasquid_destination_config.test", "type", "DENY"),
 					resource.TestCheckResourceAttr("terrasquid_destination_config.test", "ports.#", "1"),
 					resource.TestCheckResourceAttr("terrasquid_destination_config.test", "ports.0", "22"),
+					resource.TestCheckResourceAttr("terrasquid_destination_config.test", "comment", "Block SSH"),
 				),
 			},
 			{

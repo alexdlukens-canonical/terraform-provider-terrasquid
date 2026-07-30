@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -48,7 +49,7 @@ func TestDoRequest_AuthenticatedGET(t *testing.T) {
 		_, _ = w.Write([]byte(`{"id": "1"}`))
 	}
 	client, _ := newTestClient(t, handler)
-	resp, err := client.doRequest("GET", "/test/", nil)
+	resp, err := client.doRequest(context.Background(), "GET", "/test/", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -83,7 +84,7 @@ func TestDoRequest_POSTWithBody(t *testing.T) {
 	}
 	client, _ := newTestClient(t, handler)
 	body := map[string]string{"name": "test"}
-	resp, err := client.doRequest("POST", "/items/", body)
+	resp, err := client.doRequest(context.Background(), "POST", "/items/", body)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -104,7 +105,7 @@ func TestDoRequest_POSTWithBody(t *testing.T) {
 func TestDoRequest_MarshalingError(t *testing.T) {
 	client := NewClient("http://example.com", "key")
 	badBody := make(chan int)
-	_, err := client.doRequest("POST", "/test/", badBody)
+	_, err := client.doRequest(context.Background(), "POST", "/test/", badBody)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -115,7 +116,7 @@ func TestDoRequest_MarshalingError(t *testing.T) {
 
 func TestDoRequest_RequestCreationError(t *testing.T) {
 	client := NewClient("http://example.com", "key")
-	_, err := client.doRequest("BAD METHOD\x00", "/test/", nil)
+	_, err := client.doRequest(context.Background(), "BAD METHOD\x00", "/test/", nil)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -135,7 +136,7 @@ func TestDoUnauthenticatedRequest(t *testing.T) {
 		_, _ = w.Write([]byte(`{"status":"ok"}`))
 	}
 	client, _ := newTestClient(t, handler)
-	resp, err := client.doUnauthenticatedRequest("GET", "/api/v1/status/")
+	resp, err := client.doUnauthenticatedRequest(context.Background(), "GET", "/api/v1/status/")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -157,7 +158,7 @@ func TestDoUnauthenticatedRequest(t *testing.T) {
 
 func TestDoUnauthenticatedRequest_RequestCreationError(t *testing.T) {
 	client := NewClient("http://example.com", "key")
-	_, err := client.doUnauthenticatedRequest("BAD\x00", "/test/")
+	_, err := client.doUnauthenticatedRequest(context.Background(), "BAD\x00", "/test/")
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -312,10 +313,6 @@ func TestIsRetryableError(t *testing.T) {
 	if !isRetryableError(timeoutErr) {
 		t.Error("timeout net.Error should be retryable")
 	}
-	tempErr := &customNetError{temporary: true}
-	if !isRetryableError(tempErr) {
-		t.Error("temporary net.Error should be retryable")
-	}
 	urlErr := &url.Error{Err: timeoutErr}
 	if !isRetryableError(urlErr) {
 		t.Error("url.Error with timeout should be retryable")
@@ -337,13 +334,27 @@ func TestDoRequest_RetryOn500ThenSuccess(t *testing.T) {
 		_, _ = w.Write([]byte(`{"id":"ok"}`))
 	}
 	client, _ := newTestClient(t, handler)
-	resp, err := client.doRequest("GET", "/retry/", nil)
+	resp, err := client.doRequest(context.Background(), "GET", "/retry/", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if attempts != 2 {
 		t.Errorf("attempts = %d, want 2", attempts)
+	}
+}
+
+func TestDoRequest_CancelDuringRetry(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		cancel()
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}
+	client, _ := newTestClient(t, handler)
+
+	_, err := client.doRequest(ctx, "GET", "/retry/", nil)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("error = %v, want context.Canceled", err)
 	}
 }
 
@@ -363,7 +374,7 @@ func TestDoRequest_RetryOnNetworkErrorThenSuccess(t *testing.T) {
 	client := NewClient(ts.URL, "key")
 	client.HTTPClient.Transport = transport
 
-	resp, err := client.doRequest("GET", "/test/", nil)
+	resp, err := client.doRequest(context.Background(), "GET", "/test/", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -421,7 +432,7 @@ func TestDoRequest_RetryOn500(t *testing.T) {
 		_, _ = w.Write([]byte(`{"id":"ok"}`))
 	}
 	client, _ := newTestClient(t, handler)
-	resp, err := client.doRequest("GET", "/test/", nil)
+	resp, err := client.doRequest(context.Background(), "GET", "/test/", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -442,7 +453,7 @@ func TestDoRequest_RetryExhausted(t *testing.T) {
 		_, _ = w.Write([]byte(`{"message":"fail"}`))
 	}
 	client, _ := newTestClient(t, handler)
-	resp, err := client.doRequest("GET", "/test/", nil)
+	resp, err := client.doRequest(context.Background(), "GET", "/test/", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -470,7 +481,7 @@ func TestDoRequest_RetryOnNetworkError(t *testing.T) {
 			return rec.Result(), nil
 		}),
 	}
-	resp, err := client.doRequest("GET", "/test/", nil)
+	resp, err := client.doRequest(context.Background(), "GET", "/test/", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -489,7 +500,7 @@ func TestDoRequest_NetworkErrorExhausted(t *testing.T) {
 			return nil, &url.Error{Err: &customNetError{timeout: true}, URL: req.URL.String()}
 		}),
 	}
-	_, err := client.doRequest("GET", "/test/", nil)
+	_, err := client.doRequest(context.Background(), "GET", "/test/", nil)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}

@@ -22,6 +22,7 @@ type TerrasquidProvider struct {
 type TerrasquidProviderModel struct {
 	Endpoint types.String `tfsdk:"endpoint"`
 	APIKey   types.String `tfsdk:"api_key"`
+	Insecure types.Bool   `tfsdk:"insecure"`
 }
 
 func New() provider.Provider {
@@ -45,6 +46,10 @@ func (p *TerrasquidProvider) Schema(_ context.Context, _ provider.SchemaRequest,
 				Sensitive:   true,
 				Description: "API key for authentication. Falls back to TERRASQUID_API_KEY environment variable.",
 			},
+			"insecure": schema.BoolAttribute{
+				Optional:    true,
+				Description: "Disable TLS certificate verification for the Terrasquid endpoint.",
+			},
 		},
 	}
 }
@@ -65,6 +70,7 @@ func (p *TerrasquidProvider) Configure(ctx context.Context, req provider.Configu
 	if !config.APIKey.IsNull() && !config.APIKey.IsUnknown() {
 		apiKey = config.APIKey.ValueString()
 	}
+	insecure := !config.Insecure.IsNull() && !config.Insecure.IsUnknown() && config.Insecure.ValueBool()
 
 	if endpoint == "" {
 		resp.Diagnostics.AddError(
@@ -83,6 +89,14 @@ func (p *TerrasquidProvider) Configure(ctx context.Context, req provider.Configu
 	}
 
 	c := client.NewClient(endpoint, apiKey)
+	c.SetInsecureTLS(insecure)
+	if err := c.ValidateCredentials(ctx); err != nil {
+		resp.Diagnostics.AddError(
+			"Invalid Terrasquid Credentials",
+			fmt.Sprintf("Unable to authenticate with Terrasquid endpoint %q: %s", endpoint, err),
+		)
+		return
+	}
 	resp.DataSourceData = c
 	resp.ResourceData = c
 }
@@ -91,6 +105,7 @@ func (p *TerrasquidProvider) Resources(_ context.Context) []func() resource.Reso
 	return []func() resource.Resource{
 		NewSourceACLResource,
 		NewDestinationConfigResource,
+		NewDestinationGroupResource,
 		NewACLRuleResource,
 	}
 }
@@ -98,6 +113,7 @@ func (p *TerrasquidProvider) Resources(_ context.Context) []func() resource.Reso
 func (p *TerrasquidProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewStatusDataSource,
+		NewDestinationGroupDataSource,
 	}
 }
 
