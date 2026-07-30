@@ -2,6 +2,8 @@ package client
 
 import (
 	"bytes"
+	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -26,6 +28,21 @@ func NewClient(baseURL, apiKey string) *APIClient {
 			Timeout: 30 * time.Second,
 		},
 	}
+}
+
+func (c *APIClient) SetInsecureTLS(insecure bool) {
+	if !insecure {
+		return
+	}
+
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	c.HTTPClient.Transport = transport
+}
+
+func (c *APIClient) ValidateCredentials(ctx context.Context) error {
+	_, err := c.ListSourceACLs(ctx)
+	return err
 }
 
 func isRetryableError(err error) bool {

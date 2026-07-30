@@ -34,6 +34,50 @@ resource "terrasquid_source_acl" "example" {
 }
 ```
 
+## Shared destination groups
+
+Define commonly allowed destinations once in an owner deployment, then expose them through a globally unique group name:
+
+```hcl
+resource "terrasquid_destination_config" "google" {
+  name  = "google"
+  dst   = "google.com"
+  type  = "CONNECT"
+  ports = [443]
+}
+
+resource "terrasquid_destination_config" "github" {
+  name  = "github"
+  dst   = "github.com"
+  type  = "CONNECT"
+  ports = [22, 443]
+}
+
+resource "terrasquid_destination_group" "common_sites" {
+  name = "common-sites-cloud-access"
+  destinations = [
+    terrasquid_destination_config.google.id,
+    terrasquid_destination_config.github.id,
+  ]
+}
+```
+
+In a separate consumer deployment, resolve the group by name and add it to a local ACL rule:
+
+```hcl
+data "terrasquid_destination_group" "common_sites" {
+  name = "common-sites-cloud-access"
+}
+
+resource "terrasquid_acl_rule" "allow_common_sites" {
+  name               = "allow-local-common-sites"
+  sources            = [terrasquid_source_acl.example.id]
+  destination_groups = [data.terrasquid_destination_group.common_sites.id]
+}
+```
+
+All authenticated API keys can look up and reference a destination group. Only the API key that created the group can modify or delete it, and deletion is rejected while any ACL rule references the group.
+
 ### Authentication
 
 The provider requires an endpoint and an API key. These can be provided in the provider block or via environment variables:

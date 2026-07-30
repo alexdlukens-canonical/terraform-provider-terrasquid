@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -31,6 +32,7 @@ type mockStore struct {
 	requireAuth bool
 	sourceACLs  map[string]model.SourceACL
 	destConfigs map[string]model.DestinationConfig
+	destGroups  map[string]model.DestinationGroup
 	aclRules    map[string]model.ACLRule
 }
 
@@ -38,6 +40,7 @@ func newMockStore() *mockStore {
 	return &mockStore{
 		sourceACLs:  make(map[string]model.SourceACL),
 		destConfigs: make(map[string]model.DestinationConfig),
+		destGroups:  make(map[string]model.DestinationGroup),
 		aclRules:    make(map[string]model.ACLRule),
 	}
 }
@@ -96,6 +99,8 @@ func newMockServer(t *testing.T) (*httptest.Server, *mockStore) {
 			handleSourceACLs(store, w, r)
 		case strings.HasPrefix(path, "/destinations/"):
 			handleDestConfigs(store, w, r)
+		case strings.HasPrefix(path, "/destination-groups/"):
+			handleDestinationGroups(store, w, r)
 		case strings.HasPrefix(path, "/acl-rules/"):
 			handleACLRules(store, w, r)
 		default:
@@ -108,6 +113,114 @@ func newMockServer(t *testing.T) (*httptest.Server, *mockStore) {
 	}))
 	t.Cleanup(srv.Close)
 	return srv, store
+}
+
+func handleDestinationGroups(s *mockStore, w http.ResponseWriter, r *http.Request) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	path := r.URL.Path
+
+	switch {
+	case path == "/destination-groups/" && r.Method == http.MethodPost:
+		var input model.DestinationGroupInput
+		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if destinationGroupNameExists(s, input.Name, "") {
+			w.WriteHeader(http.StatusConflict)
+			return
+		}
+		if !destinationGroupDestinationsExist(s, input.Destinations) {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		id := s.newID()
+		destinations := append([]string(nil), input.Destinations...)
+		sort.Strings(destinations)
+		item := model.DestinationGroup{BaseResource: s.baseResource(id, input.Name), Destinations: destinations, Comment: input.Comment}
+		s.destGroups[id] = item
+		_ = json.NewEncoder(w).Encode(item)
+	case path == "/destination-groups/" && r.Method == http.MethodGet:
+		var items []model.DestinationGroup
+		for _, item := range s.destGroups {
+			if name := r.URL.Query().Get("name"); name == "" || item.Name == name {
+				items = append(items, item)
+			}
+		}
+		_ = json.NewEncoder(w).Encode(items)
+	default:
+		id := extractID(path, "/destination-groups/")
+		item, ok := s.destGroups[id]
+		if !ok {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		switch r.Method {
+		case http.MethodGet:
+			_ = json.NewEncoder(w).Encode(item)
+		case http.MethodPut:
+			var input model.DestinationGroupInput
+			if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			if destinationGroupNameExists(s, input.Name, id) {
+				w.WriteHeader(http.StatusConflict)
+				return
+			}
+			if !destinationGroupDestinationsExist(s, input.Destinations) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			destinations := append([]string(nil), input.Destinations...)
+			sort.Strings(destinations)
+			item.Name, item.Destinations, item.Comment, item.UpdatedAt = input.Name, destinations, input.Comment, time.Now()
+			s.destGroups[id] = item
+			_ = json.NewEncoder(w).Encode(item)
+		case http.MethodDelete:
+			if destinationGroupIsReferenced(s, id) {
+				w.WriteHeader(http.StatusConflict)
+				return
+			}
+			delete(s.destGroups, id)
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
+	}
+}
+
+func destinationGroupNameExists(s *mockStore, name, excludedID string) bool {
+	for id, group := range s.destGroups {
+		if id != excludedID && group.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+func destinationGroupDestinationsExist(s *mockStore, destinationIDs []string) bool {
+	if len(destinationIDs) == 0 {
+		return false
+	}
+	for _, destinationID := range destinationIDs {
+		if _, exists := s.destConfigs[destinationID]; !exists {
+			return false
+		}
+	}
+	return true
+}
+
+func destinationGroupIsReferenced(s *mockStore, groupID string) bool {
+	for _, rule := range s.aclRules {
+		for _, referencedGroupID := range rule.DestinationGroups {
+			if referencedGroupID == groupID {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func extractID(path, prefix string) string {
@@ -272,13 +385,19 @@ func handleACLRules(s *mockStore, w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
+		if input.Destinations == nil || input.DestinationGroups == nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(map[string][]string{"destinations": {"This field may not be null."}})
+			return
+		}
 		id := s.newID()
 		item := model.ACLRule{
-			BaseResource: s.baseResource(id, "acl-rule"),
-			Priority:     input.Priority,
-			Comment:      input.Comment,
-			Sources:      input.Sources,
-			Destinations: input.Destinations,
+			BaseResource:      s.baseResource(id, input.Name),
+			Priority:          input.Priority,
+			Comment:           input.Comment,
+			Sources:           input.Sources,
+			Destinations:      input.Destinations,
+			DestinationGroups: input.DestinationGroups,
 		}
 		s.aclRules[id] = item
 		_ = json.NewEncoder(w).Encode(item)
@@ -315,10 +434,16 @@ func handleACLRules(s *mockStore, w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
+			if input.Destinations == nil || input.DestinationGroups == nil {
+				w.WriteHeader(http.StatusBadRequest)
+				_ = json.NewEncoder(w).Encode(map[string][]string{"destinations": {"This field may not be null."}})
+				return
+			}
 			item.Priority = input.Priority
 			item.Comment = input.Comment
 			item.Sources = input.Sources
 			item.Destinations = input.Destinations
+			item.DestinationGroups = input.DestinationGroups
 			item.UpdatedAt = time.Now()
 			s.aclRules[id] = item
 			_ = json.NewEncoder(w).Encode(item)
@@ -341,13 +466,33 @@ func TestAccProvider_InvalidAPIKey(t *testing.T) {
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccProviderConfig() + `
-resource "terrasquid_source_acl" "test" {
-  name = "test"
-  cidr = ["10.0.0.0/8"]
+				Config:      testAccProviderConfig(),
+				ExpectError: regexp.MustCompile(`Invalid Terrasquid Credentials.*API error 401`),
+			},
+		},
+	})
 }
-`,
-				ExpectError: regexp.MustCompile(`API error 401`),
+
+func TestAccProvider_InsecureTLS(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v1/sources/" || r.Method != http.MethodGet {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode([]model.SourceACL{})
+	}))
+	t.Cleanup(srv.Close)
+	t.Setenv("TERRASQUID_ENDPOINT", srv.URL)
+	t.Setenv("TERRASQUID_API_KEY", "valid-key")
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `provider "terrasquid" {
+  insecure = true
+}`,
 			},
 		},
 	})

@@ -119,3 +119,38 @@ resource "terrasquid_acl_rule" "test" {
 		},
 	})
 }
+
+func TestAccACLRuleResource_destinationGroupOnly(t *testing.T) {
+	srv, _ := newMockServer(t)
+	t.Setenv("TERRASQUID_ENDPOINT", srv.URL)
+	t.Setenv("TERRASQUID_API_KEY", "valid-key")
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccProviderConfig() + `
+resource "terrasquid_acl_rule" "test" {
+  name               = "group-only-acl-rule"
+  sources            = ["src-1"]
+  destination_groups = ["group-1"]
+}
+`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("terrasquid_acl_rule.test", "destinations.#", "0"),
+					resource.TestCheckResourceAttr("terrasquid_acl_rule.test", "destination_groups.#", "1"),
+				),
+			},
+			{
+				Config: testAccProviderConfig() + `
+resource "terrasquid_acl_rule" "test" {
+  name               = "group-only-acl-rule"
+  sources            = ["src-1"]
+  destination_groups = ["group-1"]
+}
+`,
+				PlanOnly: true,
+			},
+		},
+	})
+}
