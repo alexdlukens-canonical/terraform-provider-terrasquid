@@ -100,13 +100,18 @@ func (r *SourceACLResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	result, err := r.client.CreateSourceACL(ctx, model.SourceACLInput{
+	input := model.SourceACLInput{
 		Name:    plan.Name.ValueString(),
 		CIDR:    cidrSlice,
 		Comment: plan.Comment.ValueString(),
-	})
+	}
+	result, err := r.client.CreateSourceACL(ctx, input)
 	if err != nil {
 		resp.Diagnostics.AddError("API Error", fmt.Sprintf("Failed to create source ACL: %s", err))
+		return
+	}
+	if err := validateCreatedSourceACL(input, result); err != nil {
+		resp.Diagnostics.AddError("Existing Resource Conflict", err.Error())
 		return
 	}
 

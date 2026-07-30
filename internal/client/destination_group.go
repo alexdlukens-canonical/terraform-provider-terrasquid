@@ -14,7 +14,7 @@ func (c *APIClient) ListDestinationGroups(ctx context.Context, name string) ([]m
 	if name != "" {
 		endpoint += "?" + url.Values{"name": []string{name}}.Encode()
 	}
-	resp, err := c.doRequest("GET", endpoint, nil)
+	resp, err := c.doRequest(ctx, "GET", endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
@@ -26,7 +26,7 @@ func (c *APIClient) ListDestinationGroups(ctx context.Context, name string) ([]m
 }
 
 func (c *APIClient) CreateDestinationGroup(ctx context.Context, input model.DestinationGroupInput) (*model.DestinationGroup, error) {
-	resp, err := c.doRequest("POST", "/api/v1/destination-groups/", input)
+	resp, err := c.doRequest(ctx, "POST", "/api/v1/destination-groups/", input)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
@@ -38,7 +38,7 @@ func (c *APIClient) CreateDestinationGroup(ctx context.Context, input model.Dest
 }
 
 func (c *APIClient) GetDestinationGroup(ctx context.Context, id string) (*model.DestinationGroup, error) {
-	resp, err := c.doRequest("GET", fmt.Sprintf("/api/v1/destination-groups/%s/", id), nil)
+	resp, err := c.doRequest(ctx, "GET", fmt.Sprintf("/api/v1/destination-groups/%s/", id), nil)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
@@ -50,7 +50,7 @@ func (c *APIClient) GetDestinationGroup(ctx context.Context, id string) (*model.
 }
 
 func (c *APIClient) UpdateDestinationGroup(ctx context.Context, id string, input model.DestinationGroupInput) (*model.DestinationGroup, error) {
-	resp, err := c.doRequest("PUT", fmt.Sprintf("/api/v1/destination-groups/%s/", id), input)
+	resp, err := c.doRequest(ctx, "PUT", fmt.Sprintf("/api/v1/destination-groups/%s/", id), input)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
@@ -62,7 +62,7 @@ func (c *APIClient) UpdateDestinationGroup(ctx context.Context, id string, input
 }
 
 func (c *APIClient) DeleteDestinationGroup(ctx context.Context, id string) error {
-	resp, err := c.doRequest("DELETE", fmt.Sprintf("/api/v1/destination-groups/%s/", id), nil)
+	resp, err := c.doRequest(ctx, "DELETE", fmt.Sprintf("/api/v1/destination-groups/%s/", id), nil)
 	if err != nil {
 		return fmt.Errorf("request failed: %w", err)
 	}

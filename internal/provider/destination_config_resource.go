@@ -135,6 +135,10 @@ func (r *DestinationConfigResource) Create(ctx context.Context, req resource.Cre
 		resp.Diagnostics.AddError("API Error", fmt.Sprintf("Failed to create destination config: %s", err))
 		return
 	}
+	if err := validateCreatedDestinationConfig(input, result); err != nil {
+		resp.Diagnostics.AddError("Existing Resource Conflict", err.Error())
+		return
+	}
 
 	plan.ID = types.StringValue(result.ID)
 	plan.Name = types.StringValue(result.Name)

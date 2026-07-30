@@ -169,7 +169,7 @@ func TestUpdateDestinationConfig(t *testing.T) {
 		Name:  "updated-dc",
 		Dst:   "10.0.0.2",
 		Type:  "allow",
-		Ports: []int{8080},
+		Ports: []int{},
 	}
 	dc, err := client.UpdateDestinationConfig(context.Background(), "dc-1", input)
 	if err != nil {
@@ -181,6 +181,9 @@ func TestUpdateDestinationConfig(t *testing.T) {
 	}
 	if parsed.Name != "updated-dc" {
 		t.Errorf("body name = %q, want %q", parsed.Name, "updated-dc")
+	}
+	if parsed.Ports == nil || len(parsed.Ports) != 0 {
+		t.Errorf("body ports = %v, want an explicit empty list", parsed.Ports)
 	}
 	if dc.Name != "updated-dc" {
 		t.Errorf("Name = %q, want %q", dc.Name, "updated-dc")

@@ -13,8 +13,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -34,9 +34,9 @@ type ACLRuleResourceModel struct {
 	Name              types.String `tfsdk:"name"`
 	Priority          types.Int64  `tfsdk:"priority"`
 	Comment           types.String `tfsdk:"comment"`
-	Sources           types.List   `tfsdk:"sources"`
-	Destinations      types.List   `tfsdk:"destinations"`
-	DestinationGroups types.List   `tfsdk:"destination_groups"`
+	Sources           types.Set    `tfsdk:"sources"`
+	Destinations      types.Set    `tfsdk:"destinations"`
+	DestinationGroups types.Set    `tfsdk:"destination_groups"`
 	Service           types.String `tfsdk:"service"`
 	CreatedAt         types.String `tfsdk:"created_at"`
 	UpdatedAt         types.String `tfsdk:"updated_at"`
@@ -76,21 +76,21 @@ func (r *ACLRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Computed: true,
 				Default:  stringdefault.StaticString(""),
 			},
-			"sources": schema.ListAttribute{
+			"sources": schema.SetAttribute{
 				ElementType: types.StringType,
 				Required:    true,
 			},
-			"destinations": schema.ListAttribute{
+			"destinations": schema.SetAttribute{
 				ElementType: types.StringType,
 				Optional:    true,
 				Computed:    true,
-				Default:     listdefault.StaticValue(types.ListValueMust(types.StringType, []attr.Value{})),
+				Default:     setdefault.StaticValue(types.SetValueMust(types.StringType, []attr.Value{})),
 			},
-			"destination_groups": schema.ListAttribute{
+			"destination_groups": schema.SetAttribute{
 				ElementType: types.StringType,
 				Optional:    true,
 				Computed:    true,
-				Default:     listdefault.StaticValue(types.ListValueMust(types.StringType, []attr.Value{})),
+				Default:     setdefault.StaticValue(types.SetValueMust(types.StringType, []attr.Value{})),
 			},
 			"service": schema.StringAttribute{
 				Computed: true,
@@ -131,8 +131,8 @@ func (r *ACLRuleResource) Create(ctx context.Context, req resource.CreateRequest
 
 	var sources []string
 	resp.Diagnostics.Append(plan.Sources.ElementsAs(ctx, &sources, false)...)
-	destinations := aclRuleListElements(ctx, plan.Destinations, &resp.Diagnostics)
-	destinationGroups := aclRuleListElements(ctx, plan.DestinationGroups, &resp.Diagnostics)
+	destinations := aclRuleSetElements(ctx, plan.Destinations, &resp.Diagnostics)
+	destinationGroups := aclRuleSetElements(ctx, plan.DestinationGroups, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -151,6 +151,10 @@ func (r *ACLRuleResource) Create(ctx context.Context, req resource.CreateRequest
 		resp.Diagnostics.AddError("API Error", fmt.Sprintf("Failed to create ACL rule: %s", err))
 		return
 	}
+	if err := validateCreatedACLRule(input, result); err != nil {
+		resp.Diagnostics.AddError("Existing Resource Conflict", err.Error())
+		return
+	}
 
 	plan.ID = types.StringValue(result.ID)
 	plan.Name = types.StringValue(result.Name)
@@ -160,15 +164,15 @@ func (r *ACLRuleResource) Create(ctx context.Context, req resource.CreateRequest
 	plan.CreatedAt = types.StringValue(result.CreatedAt.Format(time.RFC3339))
 	plan.UpdatedAt = types.StringValue(result.UpdatedAt.Format(time.RFC3339))
 
-	sourcesList, diags := types.ListValueFrom(ctx, types.StringType, result.Sources)
+	sourcesList, diags := types.SetValueFrom(ctx, types.StringType, result.Sources)
 	resp.Diagnostics.Append(diags...)
 	plan.Sources = sourcesList
 
-	destinationsList, diags := types.ListValueFrom(ctx, types.StringType, result.Destinations)
+	destinationsList, diags := types.SetValueFrom(ctx, types.StringType, result.Destinations)
 	resp.Diagnostics.Append(diags...)
 	plan.Destinations = destinationsList
 
-	destinationGroupsList, diags := types.ListValueFrom(ctx, types.StringType, result.DestinationGroups)
+	destinationGroupsList, diags := types.SetValueFrom(ctx, types.StringType, result.DestinationGroups)
 	resp.Diagnostics.Append(diags...)
 	plan.DestinationGroups = destinationGroupsList
 
@@ -200,15 +204,15 @@ func (r *ACLRuleResource) Read(ctx context.Context, req resource.ReadRequest, re
 	state.CreatedAt = types.StringValue(result.CreatedAt.Format(time.RFC3339))
 	state.UpdatedAt = types.StringValue(result.UpdatedAt.Format(time.RFC3339))
 
-	sourcesList, diags := types.ListValueFrom(ctx, types.StringType, result.Sources)
+	sourcesList, diags := types.SetValueFrom(ctx, types.StringType, result.Sources)
 	resp.Diagnostics.Append(diags...)
 	state.Sources = sourcesList
 
-	destinationsList, diags := types.ListValueFrom(ctx, types.StringType, result.Destinations)
+	destinationsList, diags := types.SetValueFrom(ctx, types.StringType, result.Destinations)
 	resp.Diagnostics.Append(diags...)
 	state.Destinations = destinationsList
 
-	destinationGroupsList, diags := types.ListValueFrom(ctx, types.StringType, result.DestinationGroups)
+	destinationGroupsList, diags := types.SetValueFrom(ctx, types.StringType, result.DestinationGroups)
 	resp.Diagnostics.Append(diags...)
 	state.DestinationGroups = destinationGroupsList
 
@@ -226,8 +230,8 @@ func (r *ACLRuleResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	var sources []string
 	resp.Diagnostics.Append(plan.Sources.ElementsAs(ctx, &sources, false)...)
-	destinations := aclRuleListElements(ctx, plan.Destinations, &resp.Diagnostics)
-	destinationGroups := aclRuleListElements(ctx, plan.DestinationGroups, &resp.Diagnostics)
+	destinations := aclRuleSetElements(ctx, plan.Destinations, &resp.Diagnostics)
+	destinationGroups := aclRuleSetElements(ctx, plan.DestinationGroups, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -259,15 +263,15 @@ func (r *ACLRuleResource) Update(ctx context.Context, req resource.UpdateRequest
 	plan.CreatedAt = types.StringValue(result.CreatedAt.Format(time.RFC3339))
 	plan.UpdatedAt = types.StringValue(result.UpdatedAt.Format(time.RFC3339))
 
-	sourcesList, diags := types.ListValueFrom(ctx, types.StringType, result.Sources)
+	sourcesList, diags := types.SetValueFrom(ctx, types.StringType, result.Sources)
 	resp.Diagnostics.Append(diags...)
 	plan.Sources = sourcesList
 
-	destinationsList, diags := types.ListValueFrom(ctx, types.StringType, result.Destinations)
+	destinationsList, diags := types.SetValueFrom(ctx, types.StringType, result.Destinations)
 	resp.Diagnostics.Append(diags...)
 	plan.Destinations = destinationsList
 
-	destinationGroupsList, diags := types.ListValueFrom(ctx, types.StringType, result.DestinationGroups)
+	destinationGroupsList, diags := types.SetValueFrom(ctx, types.StringType, result.DestinationGroups)
 	resp.Diagnostics.Append(diags...)
 	plan.DestinationGroups = destinationGroupsList
 
@@ -295,7 +299,7 @@ func (r *ACLRuleResource) ImportState(ctx context.Context, req resource.ImportSt
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func aclRuleListElements(ctx context.Context, value types.List, diagnostics *diag.Diagnostics) []string {
+func aclRuleSetElements(ctx context.Context, value types.Set, diagnostics *diag.Diagnostics) []string {
 	if value.IsNull() {
 		return []string{}
 	}

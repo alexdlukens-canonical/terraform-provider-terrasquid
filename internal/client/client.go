@@ -51,11 +51,11 @@ func isRetryableError(err error) bool {
 	}
 	var netErr net.Error
 	if errors.As(err, &netErr) {
-		return netErr.Timeout() || netErr.Temporary()
+		return netErr.Timeout()
 	}
 	var urlErr *url.Error
 	if errors.As(err, &urlErr) {
-		return urlErr.Timeout() || urlErr.Temporary()
+		return urlErr.Timeout()
 	}
 	return false
 }
@@ -64,7 +64,7 @@ func isRetryableStatus(code int) bool {
 	return (code >= 500 && code < 600) || code == http.StatusTooManyRequests
 }
 
-func (c *APIClient) doRequest(method, path string, body interface{}) (*http.Response, error) {
+func (c *APIClient) doRequest(ctx context.Context, method, path string, body interface{}) (*http.Response, error) {
 	var bodyBytes []byte
 	var err error
 	if body != nil {
@@ -84,7 +84,7 @@ func (c *APIClient) doRequest(method, path string, body interface{}) (*http.Resp
 			reqBody = bytes.NewReader(bodyBytes)
 		}
 
-		req, err := http.NewRequest(method, c.BaseURL+path, reqBody)
+		req, err := http.NewRequestWithContext(ctx, method, c.BaseURL+path, reqBody)
 		if err != nil {
 			return nil, fmt.Errorf("creating request: %w", err)
 		}
@@ -104,7 +104,9 @@ func (c *APIClient) doRequest(method, path string, body interface{}) (*http.Resp
 			if !isRetryableError(err) || attempt == maxRetries {
 				return nil, fmt.Errorf("request failed: %w", err)
 			}
-			time.Sleep(backoff)
+			if err := waitForRetry(ctx, backoff); err != nil {
+				return nil, err
+			}
 			backoff *= 2
 			continue
 		}
@@ -115,15 +117,28 @@ func (c *APIClient) doRequest(method, path string, body interface{}) (*http.Resp
 
 		_ = resp.Body.Close()
 		lastErr = &APIError{StatusCode: resp.StatusCode, Message: fmt.Sprintf("HTTP %d", resp.StatusCode)}
-		time.Sleep(backoff)
+		if err := waitForRetry(ctx, backoff); err != nil {
+			return nil, err
+		}
 		backoff *= 2
 	}
 
 	return nil, fmt.Errorf("request failed after %d retries: %w", maxRetries, lastErr)
 }
 
-func (c *APIClient) doUnauthenticatedRequest(method, path string) (*http.Response, error) {
-	req, err := http.NewRequest(method, c.BaseURL+path, nil)
+func waitForRetry(ctx context.Context, delay time.Duration) error {
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
+}
+
+func (c *APIClient) doUnauthenticatedRequest(ctx context.Context, method, path string) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, method, c.BaseURL+path, nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}

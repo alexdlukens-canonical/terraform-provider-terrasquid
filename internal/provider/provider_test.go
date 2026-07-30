@@ -466,8 +466,10 @@ func TestAccProvider_InvalidAPIKey(t *testing.T) {
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config:      testAccProviderConfig(),
-				ExpectError: regexp.MustCompile(`Invalid Terrasquid Credentials.*API error 401`),
+				Config: testAccProviderConfig() + `
+data "terrasquid_status" "test" {}
+`,
+				ExpectError: regexp.MustCompile(`(?s)Invalid Terrasquid Credentials.*API\s+error 401`),
 			},
 		},
 	})
@@ -475,12 +477,19 @@ func TestAccProvider_InvalidAPIKey(t *testing.T) {
 
 func TestAccProvider_InsecureTLS(t *testing.T) {
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v1/sources/" || r.Method != http.MethodGet {
+		if r.Method != http.MethodGet {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode([]model.SourceACL{})
+		switch r.URL.Path {
+		case "/api/v1/sources/":
+			_ = json.NewEncoder(w).Encode([]model.SourceACL{})
+		case "/api/v1/status/":
+			_ = json.NewEncoder(w).Encode(model.Status{})
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
 	}))
 	t.Cleanup(srv.Close)
 	t.Setenv("TERRASQUID_ENDPOINT", srv.URL)
@@ -492,7 +501,10 @@ func TestAccProvider_InsecureTLS(t *testing.T) {
 			{
 				Config: `provider "terrasquid" {
   insecure = true
-}`,
+}
+
+data "terrasquid_status" "test" {}
+`,
 			},
 		},
 	})

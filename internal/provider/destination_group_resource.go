@@ -78,12 +78,17 @@ func (r *DestinationGroupResource) Create(ctx context.Context, req resource.Crea
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	result, err := r.client.CreateDestinationGroup(ctx, destinationGroupInput(ctx, plan, &resp.Diagnostics))
+	input := destinationGroupInput(ctx, plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	result, err := r.client.CreateDestinationGroup(ctx, input)
 	if err != nil {
 		resp.Diagnostics.AddError("API Error", fmt.Sprintf("Failed to create destination group: %s", err))
+		return
+	}
+	if err := validateCreatedDestinationGroup(input, result); err != nil {
+		resp.Diagnostics.AddError("Existing Resource Conflict", err.Error())
 		return
 	}
 	setDestinationGroupState(ctx, &plan, result, &resp.Diagnostics)
