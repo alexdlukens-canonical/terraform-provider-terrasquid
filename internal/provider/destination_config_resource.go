@@ -63,7 +63,14 @@ func (r *DestinationConfigResource) Schema(_ context.Context, _ resource.SchemaR
 				},
 			},
 			"dst": schema.StringAttribute{
-				Required: true,
+				Required:    true,
+				Description: "Destination domain, Squid wildcard domain (leading dot), or CIDR. Asterisks are not supported.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(
+						regexp.MustCompile(`^[^*]+$`),
+						"Squid wildcard domains use a leading dot (for example, .example.com); '*' is not supported.",
+					),
+				},
 			},
 			"type": schema.StringAttribute{
 				Required: true,
