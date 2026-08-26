@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -82,6 +83,24 @@ resource "terrasquid_destination_config" "test" {
 				ResourceName:      "terrasquid_destination_config.test",
 				ImportState:       true,
 				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccDestinationConfigResource_rejectsAsteriskWildcard(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccProviderConfig() + `
+resource "terrasquid_destination_config" "test" {
+	name = "test-dest"
+	dst  = "*.example.com"
+	type = "ALLOW"
+}
+`,
+				ExpectError: regexp.MustCompile(`Squid wildcard domains use a leading dot`),
 			},
 		},
 	})
