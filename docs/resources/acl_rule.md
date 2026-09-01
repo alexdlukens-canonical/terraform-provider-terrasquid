@@ -24,7 +24,7 @@ resource "terrasquid_acl_rule" "example" {
 
 ### Optional
 
-- `priority` (Number) Rule priority. Defaults to `100`.
+- `priority` (Number) Rule priority. Lower values are evaluated first. Rules at the same priority are ordered by destination type (`DENY`, `CONNECT`, `ALLOW`), then creation time. Defaults to `100`.
 - `comment` (String) Single-line comment emitted before the Squid access rules. Defaults to an empty string, which emits no comment.
 
 ### Read-Only
