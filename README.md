@@ -62,6 +62,8 @@ resource "terrasquid_destination_group" "common_sites" {
 }
 ```
 
+Destination configuration `type` must be `ALLOW`, `DENY`, or `CONNECT`.
+
 In a separate consumer deployment, resolve the group by name and add it to a local ACL rule:
 
 ```hcl
@@ -69,14 +71,22 @@ data "terrasquid_destination_group" "common_sites" {
   name = "common-sites-cloud-access"
 }
 
+resource "terrasquid_source_acl" "local" {
+  name = "local-networks"
+  cidr = ["192.168.1.0/24", "10.0.0.0/8"]
+}
+
 resource "terrasquid_acl_rule" "allow_common_sites" {
   name               = "allow-local-common-sites"
-  sources            = [terrasquid_source_acl.example.id]
+  priority           = 100
+  sources            = [terrasquid_source_acl.local.id]
   destination_groups = [data.terrasquid_destination_group.common_sites.id]
 }
 ```
 
 All authenticated API keys can look up and reference a destination group. Only the API key that created the group can modify or delete it, and deletion is rejected while any ACL rule references the group.
+
+ACL rules default to priority `100`; lower values are evaluated first. Rules with the same priority are ordered by destination type (`DENY`, `CONNECT`, then `ALLOW`) and then by creation time.
 
 ### Authentication
 

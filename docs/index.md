@@ -22,8 +22,10 @@ provider "terrasquid" {
 
 - `terrasquid_source_acl`
 - `terrasquid_destination_config`
+- `terrasquid_destination_group`
 - `terrasquid_acl_rule`
 
 ## Data Sources
 
+- `terrasquid_destination_group`
 - `terrasquid_status`
