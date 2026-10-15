@@ -3,8 +3,10 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"testing"
 
 	"github.com/terrasquid/terraform-provider-terrasquid/internal/model"
@@ -103,6 +105,63 @@ func TestCreateDestinationConfig(t *testing.T) {
 	}
 	if dc.ID != "dc-new" {
 		t.Errorf("ID = %q, want %q", dc.ID, "dc-new")
+	}
+	var body map[string]json.RawMessage
+	if err := json.Unmarshal(gotBody, &body); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := body["port_ranges"]; ok {
+		t.Fatal("legacy create must omit unset port_ranges")
+	}
+}
+
+func TestDestinationConfigPortRangesWireFormat(t *testing.T) {
+	for _, method := range []string{http.MethodPost, http.MethodPut} {
+		for _, ranges := range [][]string{nil, {}, {"30000-32767"}} {
+			t.Run(method+fmt.Sprint(ranges), func(t *testing.T) {
+				handler := func(w http.ResponseWriter, r *http.Request) {
+					if r.Method != method {
+						t.Errorf("method = %s, want %s", r.Method, method)
+					}
+					var body map[string]json.RawMessage
+					if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+						t.Fatal(err)
+					}
+					raw, present := body["port_ranges"]
+					if present != (ranges != nil) {
+						t.Errorf("port_ranges present = %v, want %v", present, ranges != nil)
+					}
+					if ranges != nil {
+						var got []string
+						if err := json.Unmarshal(raw, &got); err != nil {
+							t.Fatal(err)
+						}
+						if got == nil || !slices.Equal(got, ranges) {
+							t.Errorf("port_ranges = %v, want explicit list %v", got, ranges)
+						}
+					}
+					_ = json.NewEncoder(w).Encode(body)
+				}
+				client, _ := newTestClient(t, handler)
+				input := model.DestinationConfigInput{Name: "ranges", Dst: "example.com", Type: "ALLOW"}
+				if ranges != nil {
+					input.PortRanges = &ranges
+				}
+				var result *model.DestinationConfig
+				var err error
+				if method == http.MethodPost {
+					result, err = client.CreateDestinationConfig(context.Background(), input)
+				} else {
+					result, err = client.UpdateDestinationConfig(context.Background(), "dc-1", input)
+				}
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !slices.Equal(result.PortRanges, ranges) {
+					t.Errorf("response ranges = %v, want %v", result.PortRanges, ranges)
+				}
+			})
+		}
 	}
 }
 

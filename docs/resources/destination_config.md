@@ -24,8 +24,13 @@ resource "terrasquid_destination_config" "example" {
 
 ### Optional
 
-- `ports` (List of Number) List of port numbers. Defaults to `443` for `CONNECT`, otherwise `80`.
+- `ports` (List of Number) Individual integer ports between `1` and `65535`, combined with `port_ranges`. When both fields are unset or empty, defaults to `443` for `CONNECT`, otherwise `80`.
+- `port_ranges` (List of String) Optional inclusive ranges in `start-end` format, such as `["30000-32767"]`. Endpoints must be between `1` and `65535`, with start less than or equal to end. Defaults to unset (`null`). Ranges are emitted directly in Squid port ACLs, not expanded into individual ports.
 - `comment` (String) Single-line comment emitted before the Squid destination ACLs. Defaults to an empty string, which emits no comment.
+
+Existing configurations and state do not need changes. Set `port_ranges` alongside
+`ports`, or use ranges alone without adding an implicit default port. Set
+`port_ranges = []` or remove the attribute to clear previously configured ranges.
 
 ### Read-Only
 

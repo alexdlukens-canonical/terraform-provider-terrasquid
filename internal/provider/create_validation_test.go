@@ -12,6 +12,7 @@ func TestValidateCreatedResources(t *testing.T) {
 	if err := validateCreatedSourceACL(sourceInput, source); err != nil {
 		t.Fatalf("matching source ACL rejected: %v", err)
 	}
+
 	source.CIDR = []string{"192.168.0.0/16"}
 	if err := validateCreatedSourceACL(sourceInput, source); err == nil {
 		t.Error("mismatched source ACL accepted")
@@ -45,5 +46,28 @@ func TestValidateCreatedResources(t *testing.T) {
 	rule.Priority = 200
 	if err := validateCreatedACLRule(ruleInput, rule); err == nil {
 		t.Error("mismatched ACL rule accepted")
+	}
+}
+
+func TestValidateCreatedDestinationConfigPortRanges(t *testing.T) {
+	input := model.DestinationConfigInput{Name: "destination", Dst: "example.com", Type: "ALLOW"}
+	result := &model.DestinationConfig{
+		BaseResource: model.BaseResource{Name: "destination"}, Dst: input.Dst, Type: input.Type,
+	}
+	if err := validateCreatedDestinationConfig(input, result); err != nil {
+		t.Fatalf("legacy destination rejected: %v", err)
+	}
+	result.PortRanges = []string{"30000-32767"}
+	if err := validateCreatedDestinationConfig(input, result); err == nil {
+		t.Fatal("existing destination with unexpected ranges accepted")
+	}
+	ranges := []string{"30000-32767"}
+	input.PortRanges = &ranges
+	if err := validateCreatedDestinationConfig(input, result); err != nil {
+		t.Fatalf("matching ranges rejected: %v", err)
+	}
+	result.PortRanges = []string{"8080-8090"}
+	if err := validateCreatedDestinationConfig(input, result); err == nil {
+		t.Fatal("mismatched ranges accepted")
 	}
 }
