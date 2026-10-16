@@ -15,7 +15,12 @@ func validateCreatedSourceACL(input model.SourceACLInput, result *model.SourceAC
 }
 
 func validateCreatedDestinationConfig(input model.DestinationConfigInput, result *model.DestinationConfig) error {
-	if input.Name != result.Name || input.Dst != result.Dst || input.Type != result.Type || input.Comment != result.Comment || !sameInts(input.Ports, result.Ports) {
+	var ranges []string
+	if input.PortRanges != nil {
+		ranges = *input.PortRanges
+	}
+	if input.Name != result.Name || input.Dst != result.Dst || input.Type != result.Type || input.Comment != result.Comment ||
+		!sameInts(input.Ports, result.Ports) || !sameStrings(ranges, result.PortRanges) {
 		return fmt.Errorf("an existing destination config named %q has different attributes; import it or choose a different name", input.Name)
 	}
 	return nil

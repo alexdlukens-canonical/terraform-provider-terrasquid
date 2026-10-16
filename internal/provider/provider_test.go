@@ -321,6 +321,9 @@ func handleDestConfigs(s *mockStore, w http.ResponseWriter, r *http.Request) {
 			Ports:        input.Ports,
 			Comment:      input.Comment,
 		}
+		if input.PortRanges != nil {
+			item.PortRanges = *input.PortRanges
+		}
 		s.destConfigs[id] = item
 		_ = json.NewEncoder(w).Encode(item)
 
@@ -360,6 +363,9 @@ func handleDestConfigs(s *mockStore, w http.ResponseWriter, r *http.Request) {
 			item.Dst = input.Dst
 			item.Type = input.Type
 			item.Ports = input.Ports
+			if input.PortRanges != nil {
+				item.PortRanges = *input.PortRanges
+			}
 			item.Comment = input.Comment
 			item.UpdatedAt = time.Now()
 			s.destConfigs[id] = item

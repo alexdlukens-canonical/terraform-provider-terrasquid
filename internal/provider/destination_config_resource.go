@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -27,15 +29,16 @@ type DestinationConfigResource struct {
 }
 
 type DestinationConfigResourceModel struct {
-	ID        types.String `tfsdk:"id"`
-	Name      types.String `tfsdk:"name"`
-	Dst       types.String `tfsdk:"dst"`
-	Type      types.String `tfsdk:"type"`
-	Ports     types.List   `tfsdk:"ports"`
-	Comment   types.String `tfsdk:"comment"`
-	Service   types.String `tfsdk:"service"`
-	CreatedAt types.String `tfsdk:"created_at"`
-	UpdatedAt types.String `tfsdk:"updated_at"`
+	ID         types.String `tfsdk:"id"`
+	Name       types.String `tfsdk:"name"`
+	Dst        types.String `tfsdk:"dst"`
+	Type       types.String `tfsdk:"type"`
+	Ports      types.List   `tfsdk:"ports"`
+	PortRanges types.List   `tfsdk:"port_ranges"`
+	Comment    types.String `tfsdk:"comment"`
+	Service    types.String `tfsdk:"service"`
+	CreatedAt  types.String `tfsdk:"created_at"`
+	UpdatedAt  types.String `tfsdk:"updated_at"`
 }
 
 func NewDestinationConfigResource() resource.Resource {
@@ -81,6 +84,17 @@ func (r *DestinationConfigResource) Schema(_ context.Context, _ resource.SchemaR
 			"ports": schema.ListAttribute{
 				ElementType: types.Int64Type,
 				Optional:    true,
+				Validators: []validator.List{
+					listvalidator.ValueInt64sAre(int64validator.Between(1, 65535)),
+				},
+			},
+			"port_ranges": schema.ListAttribute{
+				ElementType: types.StringType,
+				Optional:    true,
+				Description: "Inclusive start-end port ranges (for example, 30000-32767). Endpoints must be 1-65535 with start <= end. Combined with ports; defaults apply only when both are empty or unset.",
+				Validators: []validator.List{
+					listvalidator.ValueStringsAre(portRangeValidator{}),
+				},
 			},
 			"comment": schema.StringAttribute{
 				Optional: true,
@@ -137,6 +151,15 @@ func (r *DestinationConfigResource) Create(ctx context.Context, req resource.Cre
 		input.Ports = int64SliceToIntSlice(sortInt64Slice(portsInt64))
 	}
 
+	if !plan.PortRanges.IsNull() {
+		var ranges []string
+		resp.Diagnostics.Append(plan.PortRanges.ElementsAs(ctx, &ranges, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		input.PortRanges = &ranges
+	}
+
 	result, err := r.client.CreateDestinationConfig(ctx, input)
 	if err != nil {
 		resp.Diagnostics.AddError("API Error", fmt.Sprintf("Failed to create destination config: %s", err))
@@ -159,6 +182,9 @@ func (r *DestinationConfigResource) Create(ctx context.Context, req resource.Cre
 	portsList, diags := destinationConfigIntListValue(ctx, plan.Ports, sortIntSlice(result.Ports))
 	resp.Diagnostics.Append(diags...)
 	plan.Ports = portsList
+	rangesList, diags := destinationConfigStringListValue(ctx, plan.PortRanges, result.PortRanges)
+	resp.Diagnostics.Append(diags...)
+	plan.PortRanges = rangesList
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
@@ -192,6 +218,9 @@ func (r *DestinationConfigResource) Read(ctx context.Context, req resource.ReadR
 	portsList, diags := destinationConfigIntListValue(ctx, state.Ports, sortIntSlice(result.Ports))
 	resp.Diagnostics.Append(diags...)
 	state.Ports = portsList
+	rangesList, diags := destinationConfigStringListValue(ctx, state.PortRanges, result.PortRanges)
+	resp.Diagnostics.Append(diags...)
+	state.PortRanges = rangesList
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
@@ -221,6 +250,17 @@ func (r *DestinationConfigResource) Update(ctx context.Context, req resource.Upd
 		input.Ports = int64SliceToIntSlice(sortInt64Slice(portsInt64))
 	}
 
+	if !plan.PortRanges.IsNull() || !state.PortRanges.IsNull() {
+		ranges := []string{}
+		if !plan.PortRanges.IsNull() {
+			resp.Diagnostics.Append(plan.PortRanges.ElementsAs(ctx, &ranges, false)...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+		}
+		input.PortRanges = &ranges
+	}
+
 	id := plan.ID.ValueString()
 	if id == "" {
 		id = state.ID.ValueString()
@@ -243,6 +283,9 @@ func (r *DestinationConfigResource) Update(ctx context.Context, req resource.Upd
 	portsList, diags := destinationConfigIntListValue(ctx, plan.Ports, sortIntSlice(result.Ports))
 	resp.Diagnostics.Append(diags...)
 	plan.Ports = portsList
+	rangesList, diags := destinationConfigStringListValue(ctx, plan.PortRanges, result.PortRanges)
+	resp.Diagnostics.Append(diags...)
+	plan.PortRanges = rangesList
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
@@ -277,4 +320,14 @@ func destinationConfigIntListValue(ctx context.Context, current types.List, valu
 		return types.ListNull(types.Int64Type), nil
 	}
 	return types.ListValueFrom(ctx, types.Int64Type, intSliceToInt64Slice(values))
+}
+
+func destinationConfigStringListValue(ctx context.Context, current types.List, values []string) (types.List, diag.Diagnostics) {
+	if len(values) == 0 && current.IsNull() {
+		return types.ListNull(types.StringType), nil
+	}
+	if values == nil {
+		values = []string{}
+	}
+	return types.ListValueFrom(ctx, types.StringType, values)
 }
