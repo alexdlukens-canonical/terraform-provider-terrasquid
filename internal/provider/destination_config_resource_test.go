@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -153,6 +154,44 @@ resource "terrasquid_destination_config" "test" {
 				ImportStateVerify: true,
 			},
 		},
+	})
+}
+
+func TestAccDestinationConfigResource_nameLength(t *testing.T) {
+	srv, _ := newMockServer(t)
+	t.Setenv("TERRASQUID_ENDPOINT", srv.URL)
+	t.Setenv("TERRASQUID_API_KEY", "valid-key")
+	config := func(name string) string {
+		return testAccProviderConfig() + fmt.Sprintf(`
+resource "terrasquid_destination_config" "test" {
+	name = %q
+	dst  = "example.com"
+	type = "ALLOW"
+}
+`, name)
+	}
+
+	t.Run("accepts 255 characters", func(t *testing.T) {
+		resource.Test(t, resource.TestCase{
+			ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+			Steps: []resource.TestStep{{
+				Config: config(strings.Repeat("a", 255)),
+				Check: resource.TestCheckResourceAttr(
+					"terrasquid_destination_config.test",
+					"name",
+					strings.Repeat("a", 255),
+				),
+			}},
+		})
+	})
+	t.Run("rejects 256 characters", func(t *testing.T) {
+		resource.Test(t, resource.TestCase{
+			ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+			Steps: []resource.TestStep{{
+				Config:      config(strings.Repeat("a", 256)),
+				ExpectError: regexp.MustCompile(`Invalid Attribute Value Length`),
+			}},
+		})
 	})
 }
 

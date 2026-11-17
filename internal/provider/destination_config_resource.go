@@ -61,7 +61,7 @@ func (r *DestinationConfigResource) Schema(_ context.Context, _ resource.SchemaR
 			"name": schema.StringAttribute{
 				Required: true,
 				Validators: []validator.String{
-					stringvalidator.LengthBetween(1, 63),
+					stringvalidator.LengthBetween(1, 255),
 					stringvalidator.RegexMatches(regexp.MustCompile(`^[a-zA-Z0-9_-]+$`), ""),
 				},
 			},
